@@ -1,0 +1,20 @@
+# Virtual environments
+rag_env/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# Large binaries
+*.dll
+*.pt
+*.bin
+chroma_db/
