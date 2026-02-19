@@ -1,0 +1,9 @@
+{
+  "medications": [
+    {
+      "name": "ad",
+      "dosage": "2ml",
+      "frequency": "2 times"
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Medications</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #f4f6f9;
+        }
+
+        .navbar {
+            background: #4CAF50;
+            padding: 12px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+        }
+
+        .container {
+            width: 500px;
+            margin: 40px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        input {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+        }
+
+        button {
+            width: 100%;
+            padding: 8px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        .med {
+            background: #e9f5e9;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 6px;
+        }
+
+        .med button {
+            background: red;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div>Medical RAG Assistant</div>
+    <div>
+        <a href="index.html">Chat</a>
+        <a href="notes.html">My Medications</a>
+    </div>
+</div>
+
+<div class="container">
+    <h3>Add Medication</h3>
+
+    <input type="text" id="name" placeholder="Medication Name">
+    <input type="text" id="dosage" placeholder="Dosage">
+    <input type="text" id="frequency" placeholder="Frequency">
+
+    <button onclick="addMedication()">Add</button>
+
+    <h3>My Medications</h3>
+    <div id="list"></div>
+</div>
+
+<script>
+
+async function loadMeds() {
+    const response = await fetch("http://127.0.0.1:8000/medications");
+    const data = await response.json();
+
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    data.medications.forEach(med => {
+        list.innerHTML += `
+            <div class="med">
+                <b>${med.name}</b><br>
+                ${med.dosage}<br>
+                ${med.frequency}
+                <br>
+                <button onclick="deleteMed('${med.name}')">Delete</button>
+            </div>
+        `;
+    });
+}
+
+async function addMedication() {
+    const name = document.getElementById("name").value;
+    const dosage = document.getElementById("dosage").value;
+    const frequency = document.getElementById("frequency").value;
+
+    if (!name || !dosage || !frequency) return alert("Fill all fields");
+
+    await fetch("http://127.0.0.1:8000/add-medication", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name, dosage, frequency })
+    });
+
+    loadMeds();
+}
+
+async function deleteMed(name) {
+    await fetch(`http://127.0.0.1:8000/medication/${name}`, {
+        method: "DELETE"
+    });
+    loadMeds();
+}
+
+loadMeds();
+
+</script>
+
+</body>
+</html>
