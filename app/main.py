@@ -6,6 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.rag import ask_question_rag
 
 
+import sqlite3
+
+
+from app.database import init_db
 app = FastAPI()
 
 app.add_middleware(
