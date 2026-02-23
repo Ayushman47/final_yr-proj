@@ -1,9 +1,9 @@
 {
   "medications": [
     {
-      "name": "para",
-      "dosage": "2",
-      "frequency": "3times"
+      "name": "pan",
+      "dosage": "2ml",
+      "frequency": "3"
     }
   ]
 }

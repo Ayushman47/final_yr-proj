@@ -1,275 +1,147 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Medications</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Medications</title>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #e3f2fd, #f4f6f9);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
 
-        .navbar {
-            background: #2e7d32;
-            padding: 15px 25px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            font-weight: 500;
-        }
+<style>
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0f172a;
+  color: white;
+  margin: 0;
+}
 
-        .wrapper {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+header {
+  background: #16a34a;
+  padding: 18px 40px;
+  display: flex;
+  justify-content: space-between;
+}
 
-        .container {
-            width: 100%;
-            max-width: 750px;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            padding: 30px;
-        }
+.container {
+  max-width: 900px;
+  margin: 50px auto;
+  padding: 30px;
+  background: #1f2937;
+  border-radius: 20px;
+}
 
-        h2 {
-            margin-top: 0;
-            color: #333;
-        }
+input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: #111827;
+  color: white;
+}
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
+button {
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
 
-        input {
-            padding: 12px 15px;
-            border-radius: 12px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
+.primary-btn {
+  background: #22c55e;
+  width: 100%;
+  margin-bottom: 20px;
+}
 
-        input:focus {
-            border-color: #2e7d32;
-        }
+.med-card {
+  background: #111827;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
 
-        .btn {
-            padding: 10px 15px;
-            border-radius: 25px;
-            border: none;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .add-btn {
-            background: #2e7d32;
-            color: white;
-        }
-
-        .edit-btn {
-            background: #1976d2;
-            color: white;
-            margin-right: 8px;
-        }
-
-        .delete-btn {
-            background: #d32f2f;
-            color: white;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .count {
-            font-size: 14px;
-            color: #555;
-        }
-
-        .med-list {
-            margin-top: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .med-card {
-            background: #f4f9f4;
-            padding: 15px;
-            border-radius: 15px;
-            margin-bottom: 12px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
-        .med-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #2e7d32;
-            margin-bottom: 5px;
-        }
-
-        .med-detail {
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-    </style>
+.delete-btn {
+  background: #ef4444;
+  margin-top: 10px;
+}
+</style>
 </head>
 
 <body>
 
-<div class="navbar">
-    <div><b>Medical RAG Assistant</b></div>
-    <div>
-        <a href="index.html">Chat</a>
-        <a href="notes.html">My Medications</a>
-    </div>
-</div>
+<header>
+  <div>💊 Medical Assistant</div>
+  <div><a href="index.html" style="color:white;text-decoration:none;">Chat</a></div>
+</header>
 
-<div class="wrapper">
-    <div class="container">
+<div class="container">
 
-        <h2>Add / Edit Medication</h2>
+  <h2>Add Medication</h2>
 
-        <div class="form-group">
-            <input type="hidden" id="editName">
-            <input type="text" id="name" placeholder="Medication Name">
-            <input type="text" id="dosage" placeholder="Dosage (e.g., 500mg)">
-            <input type="text" id="frequency" placeholder="Frequency (e.g., Twice daily)">
-            <button class="btn add-btn" onclick="addOrUpdateMedication()">Save Medication</button>
-        </div>
+  <input id="name" type="text" placeholder="Medication Name">
+  <input id="dosage" type="text" placeholder="Dosage">
+  <input id="frequency" type="text" placeholder="Frequency">
 
-        <div class="top-bar">
-            <h2>My Medications</h2>
-            <div class="count" id="medCount"></div>
-        </div>
+  <button class="primary-btn" onclick="addMedication()">Save Medication</button>
 
-        <input type="text" id="searchInput" placeholder="Search medication..." onkeyup="filterMeds()">
+  <h2>My Medications</h2>
 
-        <div class="med-list" id="list"></div>
+  <div id="medList"></div>
 
-    </div>
 </div>
 
 <script>
 
-let allMeds = [];
+async function addMedication() {
+    const name = document.getElementById("name").value;
+    const dosage = document.getElementById("dosage").value;
+    const frequency = document.getElementById("frequency").value;
 
-async function loadMeds() {
-    const response = await fetch("http://127.0.0.1:8000/medications");
-    const data = await response.json();
-    allMeds = data.medications;
-    renderMeds(allMeds);
-}
-
-function renderMeds(meds) {
-    const list = document.getElementById("list");
-    const count = document.getElementById("medCount");
-    list.innerHTML = "";
-
-    count.innerText = `Total: ${meds.length}`;
-
-    meds.forEach(med => {
-        list.innerHTML += `
-            <div class="med-card">
-                <div class="med-title">${med.name}</div>
-                <div class="med-detail"><strong>Dosage:</strong> ${med.dosage}</div>
-                <div class="med-detail"><strong>Frequency:</strong> ${med.frequency}</div>
-                <button class="btn edit-btn" onclick="editMed('${med.name}','${med.dosage}','${med.frequency}')">Edit</button>
-                <button class="btn delete-btn" onclick="deleteMed('${med.name}')">Delete</button>
-            </div>
-        `;
-    });
-}
-
-function filterMeds() {
-    const query = document.getElementById("searchInput").value.toLowerCase();
-    const filtered = allMeds.filter(med =>
-        med.name.toLowerCase().includes(query)
-    );
-    renderMeds(filtered);
-}
-
-function editMed(name, dosage, frequency) {
-    document.getElementById("editName").value = name;
-    document.getElementById("name").value = name;
-    document.getElementById("dosage").value = dosage;
-    document.getElementById("frequency").value = frequency;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function addOrUpdateMedication() {
-    const name = document.getElementById("name").value.trim();
-    const dosage = document.getElementById("dosage").value.trim();
-    const frequency = document.getElementById("frequency").value.trim();
-    const editName = document.getElementById("editName").value;
-
-    if (!name || !dosage || !frequency) {
-        return alert("Please fill all fields");
-    }
-
-    if (editName) {
-        await fetch(`http://127.0.0.1:8000/medication/${editName}`, {
-            method: "DELETE"
-        });
-    }
+    if (!name || !dosage || !frequency) return;
 
     await fetch("http://127.0.0.1:8000/add-medication", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, dosage, frequency })
     });
 
     document.getElementById("name").value = "";
     document.getElementById("dosage").value = "";
     document.getElementById("frequency").value = "";
-    document.getElementById("editName").value = "";
 
-    loadMeds();
+    loadMedications();
 }
 
-async function deleteMed(name) {
-    if (!confirm("Delete this medication?")) return;
+async function loadMedications() {
+    const response = await fetch("http://127.0.0.1:8000/medications");
+    const data = await response.json();
 
-    await fetch(`http://127.0.0.1:8000/medication/${encodeURIComponent(name)}`, {
+    const list = document.getElementById("medList");
+    list.innerHTML = "";
+
+    data.medications.forEach(med => {
+        list.innerHTML += `
+            <div class="med-card">
+                <strong>${med.name}</strong><br>
+                Dosage: ${med.dosage}<br>
+                Frequency: ${med.frequency}<br>
+                <button class="delete-btn" onclick="deleteMedication('${med.name}')">Delete</button>
+            </div>
+        `;
+    });
+}
+
+async function deleteMedication(name) {
+    await fetch(`http://127.0.0.1:8000/medication/${name}`, {
         method: "DELETE"
     });
 
-    loadMeds();
+    loadMedications();
 }
 
-loadMeds();
+loadMedications();
 
 </script>
 

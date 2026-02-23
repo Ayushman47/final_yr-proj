@@ -1,150 +1,137 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Medical AI Assistant</title>
+    <title>Medical Assistant</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #e3f2fd, #f4f6f9);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+        :root {
+            --primary: #2e7d32;
+            --bg-light: linear-gradient(135deg, #e3f2fd, #f4f6f9);
+            --bg-dark: #121212;
+            --card-light: #ffffff;
+            --card-dark: #1e1e1e;
         }
 
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg-light);
+            transition: 0.3s ease;
+        }
+
+        body.dark {
+            background: var(--bg-dark);
+            color: white;
+        }
+
+        /* NAVBAR */
         .navbar {
-            background: #2e7d32;
-            padding: 15px 25px;
+            background: var(--primary);
+            padding: 16px 28px;
             color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-weight: 600;
+            font-size: 20px;
         }
 
-        .navbar a {
+        .nav-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .nav-btn, .clear-btn {
+            border: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .nav-btn {
+            background: white;
+        }
+
+        .clear-btn {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .nav-btn:hover,
+        .clear-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .nav-link {
             color: white;
             text-decoration: none;
-            margin-left: 20px;
-            font-weight: 500;
+            font-size: 14px;
+            opacity: 0.9;
         }
 
-        .navbar a:hover {
+        .nav-link:hover {
+            opacity: 1;
             text-decoration: underline;
         }
 
-        .chat-wrapper {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
+        /* CHAT CONTAINER */
         .chat-container {
-            width: 100%;
-            max-width: 750px;
-            height: 80vh;
-            background: white;
+            max-width: 850px;
+            margin: 40px auto;
+            background: var(--card-light);
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             display: flex;
             flex-direction: column;
+            height: 75vh;
             overflow: hidden;
+            transition: 0.3s ease;
         }
 
-        .chat-header {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            font-weight: 600;
-            font-size: 16px;
-            color: #555;
+        body.dark .chat-container {
+            background: var(--card-dark);
         }
 
         #chat {
             flex: 1;
-            padding: 20px;
+            padding: 25px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
         }
 
         .message {
             max-width: 75%;
-            padding: 14px 16px;
+            padding: 14px 18px;
             border-radius: 18px;
-            line-height: 1.5;
+            line-height: 1.6;
             font-size: 14px;
-            animation: fadeIn 0.3s ease-in-out;
+            animation: fadeIn 0.25s ease-in-out;
+            word-wrap: break-word;
         }
 
         .user {
             align-self: flex-end;
-            background: #2e7d32;
+            background: var(--primary);
             color: white;
-            border-bottom-right-radius: 5px;
+            border-bottom-right-radius: 6px;
         }
 
         .bot {
             align-self: flex-start;
             background: #f1f1f1;
             color: #333;
-            border-bottom-left-radius: 5px;
+            border-bottom-left-radius: 6px;
         }
 
-        .input-area {
-            display: flex;
-            padding: 15px;
-            border-top: 1px solid #eee;
-            background: #fafafa;
-        }
-
-        .input-area input {
-            flex: 1;
-            padding: 12px 15px;
-            border-radius: 30px;
-            border: 1px solid #ccc;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .input-area input:focus {
-            border-color: #2e7d32;
-        }
-
-        .input-area button {
-            margin-left: 10px;
-            padding: 12px 20px;
-            border-radius: 30px;
-            border: none;
-            background: #2e7d32;
+        body.dark .bot {
+            background: #333;
             color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .input-area button:hover {
-            background: #1b5e20;
-        }
-
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 3px solid #ccc;
-            border-top: 3px solid #2e7d32;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
 
         @keyframes fadeIn {
@@ -152,72 +139,175 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Scrollbar styling */
-        #chat::-webkit-scrollbar {
-            width: 6px;
+        /* INPUT AREA */
+        .input-area {
+            display: flex;
+            padding: 18px;
+            border-top: 1px solid #eee;
+            background: #fafafa;
         }
 
-        #chat::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 10px;
+        body.dark .input-area {
+            background: #1e1e1e;
+            border-top: 1px solid #333;
         }
+
+        input {
+            flex: 1;
+            padding: 14px 16px;
+            border-radius: 30px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 0 3px rgba(46,125,50,0.2);
+        }
+
+        button.send-btn {
+            margin-left: 10px;
+            padding: 14px 22px;
+            border-radius: 30px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button.send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        button.send-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .typing {
+            font-style: italic;
+            opacity: 0.7;
+        }
+
     </style>
 </head>
 
 <body>
 
 <div class="navbar">
-    <div><b>Medical RAG Assistant</b></div>
-    <div>
-        <a href="index.html">Chat</a>
-        <a href="notes.html">My Medications</a>
+    <div>💊 Medical Assistant</div>
+
+    <div class="nav-actions">
+        <button class="nav-btn" onclick="toggleDarkMode()">Dark Mode</button>
+        <button class="clear-btn" onclick="clearChat()">Clear</button>
+        <a href="notes.html" class="nav-link">My Medications</a>
     </div>
 </div>
 
-<div class="chat-wrapper">
-    <div class="chat-container">
+<div class="chat-container">
+    <div id="chat"></div>
 
-        <div class="chat-header">
-            Ask medical questions based on indexed documents
-        </div>
-
-        <div id="chat"></div>
-
-        <div class="input-area">
-            <input type="text" id="question" placeholder="Type your question..."
-                   onkeypress="if(event.key==='Enter') askQuestion()">
-            <button onclick="askQuestion()">Send</button>
-        </div>
-
+    <div class="input-area">
+        <input type="text" id="question" placeholder="Ask a medical question..." />
+        <button class="send-btn" id="sendBtn" disabled>Send</button>
     </div>
 </div>
 
 <script>
+
+const input = document.getElementById("question");
+const chat = document.getElementById("chat");
+const sendBtn = document.getElementById("sendBtn");
+
+/* Dark Mode Persistent */
+function toggleDarkMode() {
+    document.body.classList.toggle("dark");
+    localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+}
+
+if (localStorage.getItem("darkMode") === "true") {
+    document.body.classList.add("dark");
+}
+
+/* Enable/Disable Send Button */
+input.addEventListener("input", () => {
+    sendBtn.disabled = !input.value.trim();
+});
+
+/* Enter to Send */
+input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        askQuestion();
+    }
+});
+
+/* Safe Message Creation */
+function addMessage(text, type) {
+    const div = document.createElement("div");
+    div.classList.add("message", type);
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+/* Chat Persistence */
+function saveChat() {
+    localStorage.setItem("chatHistory", chat.innerHTML);
+}
+
+function loadChat() {
+    const saved = localStorage.getItem("chatHistory");
+    if (saved) chat.innerHTML = saved;
+}
+
+function clearChat() {
+    localStorage.removeItem("chatHistory");
+    chat.innerHTML = "";
+}
+
+/* Ask Question */
 async function askQuestion() {
-    const input = document.getElementById("question");
-    const chat = document.getElementById("chat");
     const question = input.value.trim();
     if (!question) return;
 
-    chat.innerHTML += `<div class="message user">${question}</div>`;
-    chat.innerHTML += `<div class="message bot"><span class="spinner"></span> Generating...</div>`;
-    chat.scrollTop = chat.scrollHeight;
+    addMessage(question, "user");
     input.value = "";
+    sendBtn.disabled = true;
 
-    const response = await fetch("http://127.0.0.1:8000/ask", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ question })
-    });
-
-    const data = await response.json();
-
-    chat.lastChild.remove();
-    chat.innerHTML += `<div class="message bot">${data.answer}</div>`;
+    const typingDiv = document.createElement("div");
+    typingDiv.classList.add("message", "bot", "typing");
+    typingDiv.textContent = "AI is thinking...";
+    chat.appendChild(typingDiv);
     chat.scrollTop = chat.scrollHeight;
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/ask", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ question })
+        });
+
+        const data = await response.json();
+        typingDiv.remove();
+        addMessage(data.answer, "bot");
+        saveChat();
+
+    } catch (error) {
+        typingDiv.remove();
+        addMessage("Error connecting to server.", "bot");
+    }
 }
+
+sendBtn.addEventListener("click", askQuestion);
+
+loadChat();
+
 </script>
 
 </body>
 </html>
-

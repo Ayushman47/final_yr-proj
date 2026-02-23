@@ -18,3 +18,5 @@ __pycache__/
 *.pt
 *.bin
 chroma_db/
+
+*.db

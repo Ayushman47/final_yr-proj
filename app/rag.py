@@ -1,106 +1,137 @@
-import os
 import requests
 import torch
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from chromadb import PersistentClient
+import os
 
-# ------------------------
-# Device
-# ------------------------
+# -------------------------
+# Device Setup
+# -------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ------------------------
-# Load Embedding Model
-# ------------------------
-embedding_model = SentenceTransformer(
-    "sentence-transformers/all-mpnet-base-v2",
-    device=device
-)
-
-# ------------------------
-# Load Persistent Chroma DB
-# ------------------------
+# -------------------------
+# Chroma DB Setup
+# -------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 chroma_path = os.path.join(BASE_DIR, "chroma_db")
 
 client = PersistentClient(path=chroma_path)
-
 collection = client.get_collection(name="rag_otc_pdf")
 
-# ------------------------
-# Re-ranker
-# ------------------------
-rerank_model = CrossEncoder(
-    "cross-encoder/ms-marco-MiniLM-L-6-v2",
-    max_length=512,
-    device=device
-)
+# -------------------------
+# Lazy Model Loading
+# -------------------------
+embedding_model = None
+rerank_model = None
 
-# ------------------------
-# Retrieval
-# ------------------------
-def retrieve_vector_db(query, n_results=10):
-    query_embedding = embedding_model.encode([query])
-    results = collection.query(
-        query_embeddings=query_embedding.tolist(),
-        n_results=n_results
-    )
-    return results["documents"][0]
+def load_models():
+    global embedding_model, rerank_model
 
-# ------------------------
-# Reranking
-# ------------------------
-def rerank_documents(query, documents, top_k=5):
-    pairs = [(query, doc) for doc in documents]
-    scores = rerank_model.predict(pairs)
-    ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
-    return [doc for doc, _ in ranked[:top_k]]
+    if embedding_model is None:
+        print("🔄 Loading embedding model...")
+        embedding_model = SentenceTransformer(
+            "sentence-transformers/all-mpnet-base-v2",
+            device=device,
+            local_files_only=True
+        )
 
-# ------------------------
-# Ollama
-# ------------------------
-def get_ollama_response(prompt, model="llama3.2:latest", max_tokens=500):
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.1,
-                "num_predict": max_tokens
+    if rerank_model is None:
+        print("🔄 Loading reranker model...")
+        rerank_model = CrossEncoder(
+            "cross-encoder/ms-marco-MiniLM-L-6-v2",
+            device=device,
+            local_files_only=True,
+            max_length=512
+        )
+
+# -------------------------
+# Conversation Memory
+# -------------------------
+conversation_memory = []
+
+# -------------------------
+# Ollama LLM Call
+# -------------------------
+def get_ollama_response(prompt: str):
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3.2",
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.2,
+                    "num_predict": 120
+                }
             }
-        }
+        )
+
+        return response.json()["response"]
+
+    except requests.exceptions.ConnectionError:
+        return "⚠️ Ollama is not running. Please start Ollama."
+
+# -------------------------
+# Main RAG Function
+# -------------------------
+def ask_question_rag(question: str):
+
+    global conversation_memory
+
+    # Store question
+    conversation_memory.append(question)
+
+    # Keep only last 2 questions
+    conversation_memory = conversation_memory[-2:]
+
+    # Load models if needed
+    load_models()
+
+    # Expand query slightly for better retrieval
+    expanded_query = f"Medical treatment question: {question}"
+    query_embedding = embedding_model.encode(expanded_query).tolist()
+
+    # Retrieve
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=8
     )
 
-    if response.status_code == 200:
-        return response.json().get("response", "")
-    else:
-        return "Error generating response from Ollama."
+    retrieved_docs = results["documents"][0]
 
-# ------------------------
-# MAIN RAG FUNCTION
-# ------------------------
-def ask_question_rag(question, retrieve_n=10, rerank_top_k=5):
-    retrieved_docs = retrieve_vector_db(question, n_results=retrieve_n)
+    # Rerank
+    pairs = [[question, doc] for doc in retrieved_docs]
+    scores = rerank_model.predict(pairs)
 
-    reranked_docs = rerank_documents(
-        question,
-        retrieved_docs,
-        top_k=rerank_top_k
-    )
+    ranked_docs = [
+        doc for _, doc in sorted(zip(scores, retrieved_docs), reverse=True)
+    ]
 
-    context = "\n\n".join(reranked_docs)
+    # Build context
+    context = "\n\n".join(ranked_docs[:3])
+
+    # Previous question (if exists)
+    memory_text = "\n".join(conversation_memory[:-1])
 
     prompt = f"""
-You are a helpful medical assistant.
-Use ONLY the context below.
+You are a medical information assistant.
+
+Previous conversation context:
+{memory_text}
+
+Current question:
+{question}
+
+Provide a short and direct answer based strictly on the given context.
+Limit the response to a maximum of 3 short points.
+Do not introduce the answer.
+Do not add explanations about formatting.
+Respond directly with the information only.
+If listing medicines, just list them concisely.
 
 Context:
 {context}
-
-Question:
-{question}
 
 Answer:
 """
