@@ -45,9 +45,9 @@ def load_models():
         )
 
 # -------------------------
-# Conversation Memory
+# Conversation Memory (Per User)
 # -------------------------
-conversation_memory = []
+conversation_memory = {}   # { username: [q1, q2] }
 
 # -------------------------
 # Ollama LLM Call
@@ -75,20 +75,27 @@ def get_ollama_response(prompt: str):
 # -------------------------
 # Main RAG Function
 # -------------------------
-def ask_question_rag(question: str):
+def ask_question_rag(question: str, username: str):
 
     global conversation_memory
 
+    # Initialize memory for user if not exists
+    if username not in conversation_memory:
+        conversation_memory[username] = []
+
     # Store question
-    conversation_memory.append(question)
+    conversation_memory[username].append(question)
 
     # Keep only last 2 questions
-    conversation_memory = conversation_memory[-2:]
+    conversation_memory[username] = conversation_memory[username][-2:]
+
+    # Previous question (if exists)
+    memory_text = "\n".join(conversation_memory[username][:-1])
 
     # Load models if needed
     load_models()
 
-    # Expand query slightly for better retrieval
+    # Expand query
     expanded_query = f"Medical treatment question: {question}"
     query_embedding = embedding_model.encode(expanded_query).tolist()
 
@@ -111,9 +118,7 @@ def ask_question_rag(question: str):
     # Build context
     context = "\n\n".join(ranked_docs[:3])
 
-    # Previous question (if exists)
-    memory_text = "\n".join(conversation_memory[:-1])
-
+    # Prompt
     prompt = f"""
 You are a medical information assistant.
 

@@ -1,16 +1,18 @@
 import json
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from app.rag import ask_question_rag
 
+from app.rag import ask_question_rag, conversation_memory
+from app.auth import router as auth_router, get_current_user
 
-import sqlite3
-
-
-from app.database import init_db
+# -------------------------
+# App Setup
+# -------------------------
 app = FastAPI()
+
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,16 +22,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#Notes File Path
+# -------------------------
+# Notes File Path
+# -------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 notes_path = os.path.join(BASE_DIR, "user_notes.json")
 
-# Create file if it doesn't exist
 if not os.path.exists(notes_path):
     with open(notes_path, "w") as f:
         json.dump({"medications": []}, f)
 
-#models
+# -------------------------
+# Request Models
+# -------------------------
 class QuestionRequest(BaseModel):
     question: str
 
@@ -38,17 +43,34 @@ class Medication(BaseModel):
     dosage: str
     frequency: str
 
-#RAG Endpoint
+# -------------------------
+# RAG Endpoint (Protected)
+# -------------------------
 @app.post("/ask")
-def ask_question(request: QuestionRequest):
-    answer = ask_question_rag(request.question)
+def ask_question(
+    request: QuestionRequest,
+    user: str = Depends(get_current_user)
+):
+    answer = ask_question_rag(request.question, user)
     return {"answer": answer}
 
+# -------------------------
+# Clear Conversation Memory
+# -------------------------
+@app.post("/clear-memory")
+def clear_memory(user: str = Depends(get_current_user)):
+    if user in conversation_memory:
+        conversation_memory[user] = []
+    return {"message": "Memory cleared"}
 
-#Add Medication
-
+# -------------------------
+# Add Medication (Protected)
+# -------------------------
 @app.post("/add-medication")
-def add_medication(med: Medication):
+def add_medication(
+    med: Medication,
+    user: str = Depends(get_current_user)
+):
     with open(notes_path, "r") as f:
         data = json.load(f)
 
@@ -59,19 +81,24 @@ def add_medication(med: Medication):
 
     return {"message": "Medication added successfully"}
 
-#Get Medications
-
+# -------------------------
+# Get Medications (Protected)
+# -------------------------
 @app.get("/medications")
-def get_medications():
+def get_medications(user: str = Depends(get_current_user)):
     with open(notes_path, "r") as f:
         data = json.load(f)
 
     return data
 
-
-#Delete Medication
+# -------------------------
+# Delete Medication (Protected)
+# -------------------------
 @app.delete("/medication/{name}")
-def delete_medication(name: str):
+def delete_medication(
+    name: str,
+    user: str = Depends(get_current_user)
+):
     with open(notes_path, "r") as f:
         data = json.load(f)
 

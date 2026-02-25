@@ -94,54 +94,78 @@ button {
 
 <script>
 
-async function addMedication() {
-    const name = document.getElementById("name").value;
-    const dosage = document.getElementById("dosage").value;
-    const frequency = document.getElementById("frequency").value;
+  
 
-    if (!name || !dosage || !frequency) return;
-
-    await fetch("http://127.0.0.1:8000/add-medication", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, dosage, frequency })
-    });
-
-    document.getElementById("name").value = "";
-    document.getElementById("dosage").value = "";
-    document.getElementById("frequency").value = "";
-
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+        window.location.href = "login.html";
+    }
+    
+    // ---------------- ADD MEDICATION ----------------
+    async function addMedication() {
+        const name = document.getElementById("name").value;
+        const dosage = document.getElementById("dosage").value;
+        const frequency = document.getElementById("frequency").value;
+    
+        if (!name || !dosage || !frequency) return;
+    
+        await fetch("http://127.0.0.1:8000/add-medication", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ name, dosage, frequency })
+        });
+    
+        document.getElementById("name").value = "";
+        document.getElementById("dosage").value = "";
+        document.getElementById("frequency").value = "";
+    
+        loadMedications();
+    }
+    
+    // ---------------- LOAD MEDICATIONS ----------------
+    async function loadMedications() {
+        const response = await fetch("http://127.0.0.1:8000/medications", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+    
+        const data = await response.json();
+    
+        const list = document.getElementById("medList");
+        list.innerHTML = "";
+    
+        data.medications.forEach(med => {
+            list.innerHTML += `
+                <div class="med-card">
+                    <strong>${med.name}</strong><br>
+                    Dosage: ${med.dosage}<br>
+                    Frequency: ${med.frequency}<br>
+                    <button class="delete-btn" onclick="deleteMedication('${med.name}')">Delete</button>
+                </div>
+            `;
+        });
+    }
+    
+    // ---------------- DELETE ----------------
+    async function deleteMedication(name) {
+        await fetch(`http://127.0.0.1:8000/medication/${name}`, {
+            method: "DELETE",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+    
+        loadMedications();
+    }
+    
     loadMedications();
-}
-
-async function loadMedications() {
-    const response = await fetch("http://127.0.0.1:8000/medications");
-    const data = await response.json();
-
-    const list = document.getElementById("medList");
-    list.innerHTML = "";
-
-    data.medications.forEach(med => {
-        list.innerHTML += `
-            <div class="med-card">
-                <strong>${med.name}</strong><br>
-                Dosage: ${med.dosage}<br>
-                Frequency: ${med.frequency}<br>
-                <button class="delete-btn" onclick="deleteMedication('${med.name}')">Delete</button>
-            </div>
-        `;
-    });
-}
-
-async function deleteMedication(name) {
-    await fetch(`http://127.0.0.1:8000/medication/${name}`, {
-        method: "DELETE"
-    });
-
-    loadMedications();
-}
-
-loadMedications();
+    
+    
 
 </script>
 

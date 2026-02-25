@@ -5,308 +5,285 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
-        :root {
-            --primary: #2e7d32;
-            --bg-light: linear-gradient(135deg, #e3f2fd, #f4f6f9);
-            --bg-dark: #121212;
-            --card-light: #ffffff;
-            --card-dark: #1e1e1e;
-        }
-
         body {
             margin: 0;
             font-family: 'Segoe UI', sans-serif;
-            background: var(--bg-light);
-            transition: 0.3s ease;
+            background: #f4f6f9;
         }
 
-        body.dark {
-            background: var(--bg-dark);
-            color: white;
-        }
-
-        /* NAVBAR */
-        .navbar {
-            background: var(--primary);
-            padding: 16px 28px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            font-size: 20px;
-        }
-
-        .nav-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .nav-btn, .clear-btn {
-            border: none;
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: 0.2s ease;
-        }
-
-        .nav-btn {
+        /* ===== TOP BAR ===== */
+        .topbar {
             background: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
         }
 
-        .clear-btn {
-            background: #d32f2f;
+        .hamburger {
+            font-size: 20px;
+            cursor: pointer;
+            margin-right: 15px;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100%;
+            background: #1b5e20;
+            color: white;
+            padding: 25px 20px;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .profile-btn {
+            background: white;
+            color: #1b5e20;
+            font-weight: bold;
+        }
+
+        .submenu {
+            display: none;
+            margin-top: 5px;
+        }
+
+        .submenu button {
+            background: #2e7d32;
             color: white;
         }
 
-        .nav-btn:hover,
-        .clear-btn:hover {
-            transform: translateY(-2px);
+        .logout-btn {
+            background: #ef4444 !important;
         }
 
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-            opacity: 0.9;
+        /* Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            z-index: 999;
         }
 
-        .nav-link:hover {
-            opacity: 1;
-            text-decoration: underline;
+        .overlay.show {
+            display: block;
         }
 
-        /* CHAT CONTAINER */
+        /* ===== CHAT ===== */
         .chat-container {
-            max-width: 850px;
+            max-width: 800px;
             margin: 40px auto;
-            background: var(--card-light);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             display: flex;
             flex-direction: column;
-            height: 75vh;
-            overflow: hidden;
-            transition: 0.3s ease;
-        }
-
-        body.dark .chat-container {
-            background: var(--card-dark);
+            height: 70vh;
         }
 
         #chat {
             flex: 1;
-            padding: 25px;
+            padding: 20px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 16px;
         }
 
         .message {
-            max-width: 75%;
-            padding: 14px 18px;
-            border-radius: 18px;
-            line-height: 1.6;
-            font-size: 14px;
-            animation: fadeIn 0.25s ease-in-out;
-            word-wrap: break-word;
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 70%;
         }
 
         .user {
-            align-self: flex-end;
-            background: var(--primary);
+            background: #2e7d32;
             color: white;
-            border-bottom-right-radius: 6px;
+            align-self: flex-end;
         }
 
         .bot {
+            background: #eeeeee;
+            color: black;
             align-self: flex-start;
-            background: #f1f1f1;
-            color: #333;
-            border-bottom-left-radius: 6px;
         }
 
-        body.dark .bot {
-            background: #333;
-            color: white;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* INPUT AREA */
         .input-area {
             display: flex;
-            padding: 18px;
-            border-top: 1px solid #eee;
-            background: #fafafa;
+            padding: 15px;
+            border-top: 1px solid #ddd;
         }
 
-        body.dark .input-area {
-            background: #1e1e1e;
-            border-top: 1px solid #333;
-        }
-
-        input {
+        #question {
             flex: 1;
-            padding: 14px 16px;
-            border-radius: 30px;
+            padding: 12px;
+            border-radius: 25px;
             border: 1px solid #ccc;
-            font-size: 14px;
-            outline: none;
-            transition: 0.2s;
         }
 
-        input:focus {
-            border: 2px solid var(--primary);
-            box-shadow: 0 0 0 3px rgba(46,125,50,0.2);
-        }
-
-        button.send-btn {
+        #sendBtn {
             margin-left: 10px;
-            padding: 14px 22px;
-            border-radius: 30px;
+            padding: 12px 20px;
+            border-radius: 25px;
             border: none;
-            background: var(--primary);
+            background: #2e7d32;
             color: white;
-            font-weight: 600;
             cursor: pointer;
-            transition: 0.2s;
         }
-
-        button.send-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        button.send-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-        }
-
-        .typing {
-            font-style: italic;
-            opacity: 0.7;
-        }
-
     </style>
 </head>
 
 <body>
 
-<div class="navbar">
-    <div>💊 Medical Assistant</div>
+<!-- TOP BAR -->
+<div class="topbar">
+    <span id="toggleSidebar" class="hamburger">☰</span>
+    <strong>💊 Medical Assistant</strong>
+</div>
 
-    <div class="nav-actions">
-        <button class="nav-btn" onclick="toggleDarkMode()">Dark Mode</button>
-        <button class="clear-btn" onclick="clearChat()">Clear</button>
-        <a href="notes.html" class="nav-link">My Medications</a>
+<!-- SIDEBAR -->
+<div id="sidebar" class="sidebar">
+    <button id="profileBtn" class="profile-btn">👤 Profile</button>
+
+    <div id="submenu" class="submenu">
+        <button id="medBtn">My Medications</button>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
+<div id="overlay" class="overlay"></div>
+
+<!-- CHAT -->
 <div class="chat-container">
     <div id="chat"></div>
 
     <div class="input-area">
         <input type="text" id="question" placeholder="Ask a medical question..." />
-        <button class="send-btn" id="sendBtn" disabled>Send</button>
+        <button id="sendBtn">Send</button>
     </div>
 </div>
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
 
-const input = document.getElementById("question");
-const chat = document.getElementById("chat");
-const sendBtn = document.getElementById("sendBtn");
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("overlay");
+    const toggleSidebar = document.getElementById("toggleSidebar");
 
-/* Dark Mode Persistent */
-function toggleDarkMode() {
-    document.body.classList.toggle("dark");
-    localStorage.setItem("darkMode", document.body.classList.contains("dark"));
-}
+    const profileBtn = document.getElementById("profileBtn");
+    const submenu = document.getElementById("submenu");
+    const medBtn = document.getElementById("medBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-if (localStorage.getItem("darkMode") === "true") {
-    document.body.classList.add("dark");
-}
+    const input = document.getElementById("question");
+    const chat = document.getElementById("chat");
+    const sendBtn = document.getElementById("sendBtn");
 
-/* Enable/Disable Send Button */
-input.addEventListener("input", () => {
-    sendBtn.disabled = !input.value.trim();
-});
-
-/* Enter to Send */
-input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        askQuestion();
+    const token = localStorage.getItem("token");
+    if (!token) {
+        window.location.replace("login.html");
+        return;
     }
-});
 
-/* Safe Message Creation */
-function addMessage(text, type) {
-    const div = document.createElement("div");
-    div.classList.add("message", type);
-    div.textContent = text;
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-}
+    // Sidebar open
+    toggleSidebar.addEventListener("click", function () {
+        sidebar.classList.add("open");
+        overlay.classList.add("show");
+    });
 
-/* Chat Persistence */
-function saveChat() {
-    localStorage.setItem("chatHistory", chat.innerHTML);
-}
+    // Sidebar close
+    overlay.addEventListener("click", function () {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("show");
+    });
 
-function loadChat() {
-    const saved = localStorage.getItem("chatHistory");
-    if (saved) chat.innerHTML = saved;
-}
+    // Profile dropdown toggle
+    profileBtn.addEventListener("click", function () {
+        submenu.style.display =
+            submenu.style.display === "block" ? "none" : "block";
+    });
 
-function clearChat() {
-    localStorage.removeItem("chatHistory");
-    chat.innerHTML = "";
-}
+    // My Medications
+    medBtn.addEventListener("click", function () {
+        window.location.href = "notes.html";
+    });
 
-/* Ask Question */
-async function askQuestion() {
-    const question = input.value.trim();
-    if (!question) return;
+    // Logout
+    logoutBtn.addEventListener("click", function () {
+        localStorage.removeItem("token");
+        localStorage.removeItem("chatHistory");
+        window.location.href = "login.html";
+    });
 
-    addMessage(question, "user");
-    input.value = "";
-    sendBtn.disabled = true;
-
-    const typingDiv = document.createElement("div");
-    typingDiv.classList.add("message", "bot", "typing");
-    typingDiv.textContent = "AI is thinking...";
-    chat.appendChild(typingDiv);
-    chat.scrollTop = chat.scrollHeight;
-
-    try {
-        const response = await fetch("http://127.0.0.1:8000/ask", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ question })
-        });
-
-        const data = await response.json();
-        typingDiv.remove();
-        addMessage(data.answer, "bot");
-        saveChat();
-
-    } catch (error) {
-        typingDiv.remove();
-        addMessage("Error connecting to server.", "bot");
+    // Chat logic
+    function addMessage(text, type) {
+        const div = document.createElement("div");
+        div.classList.add("message", type);
+        div.textContent = text;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
     }
-}
 
-sendBtn.addEventListener("click", askQuestion);
+    async function askQuestion() {
+        const question = input.value.trim();
+        if (!question) return;
 
-loadChat();
+        addMessage(question, "user");
+        input.value = "";
 
+        const loading = document.createElement("div");
+        loading.classList.add("message", "bot");
+        loading.innerText = "...";
+        chat.appendChild(loading);
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/ask", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ question })
+            });
+
+            const data = await response.json();
+            chat.removeChild(loading);
+            addMessage(data.answer, "bot");
+
+        } catch {
+            chat.removeChild(loading);
+            addMessage("Server error.", "bot");
+        }
+    }
+
+    sendBtn.addEventListener("click", askQuestion);
+
+    input.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") askQuestion();
+    });
+
+});
 </script>
 
 </body>

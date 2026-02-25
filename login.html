@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login | Medical Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #2e7d32, #1b5e20);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+
+        .card {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 16px;
+            width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: #2e7d32;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #1b5e20;
+        }
+
+        .toggle {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            color: #2e7d32;
+        }
+
+        .error {
+            color: red;
+            font-size: 13px;
+            text-align: center;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2 id="formTitle">Login</h2>
+
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+
+    <button onclick="submitForm()">Login</button>
+
+    <div class="error" id="errorMsg"></div>
+
+    <div class="toggle" onclick="toggleMode()">
+        Don't have an account? Sign up
+    </div>
+</div>
+
+<script>
+
+let isLogin = true;
+
+function toggleMode() {
+    isLogin = !isLogin;
+
+    document.getElementById("formTitle").innerText = isLogin ? "Login" : "Sign Up";
+    document.querySelector("button").innerText = isLogin ? "Login" : "Sign Up";
+    document.querySelector(".toggle").innerText =
+        isLogin ? "Don't have an account? Sign up" : "Already have an account? Login";
+
+    document.getElementById("errorMsg").innerText = "";
+}
+
+async function submitForm() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const errorMsg = document.getElementById("errorMsg");
+
+    if (!username || !password) {
+        errorMsg.innerText = "Please fill all fields.";
+        return;
+    }
+
+    const endpoint = isLogin ? "login" : "signup";
+
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/${endpoint}?username=${username}&password=${password}`, {
+            method: "POST"
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            errorMsg.innerText = data.detail || "Error occurred.";
+            return;
+        }
+
+        if (isLogin) {
+            localStorage.setItem("token", data.access_token);
+            window.location.href = "index.html";
+        } else {
+            alert("Account created! Please login.");
+            toggleMode();
+        }
+
+    } catch (err) {
+        errorMsg.innerText = "Server not reachable.";
+    }
+}
+
+</script>
+
+</body>
+</html>
