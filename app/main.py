@@ -1,9 +1,6 @@
 print("NOTES ROUTE SHOULD EXIST")
 
-import json
-import os
 from datetime import datetime
-
 from fastapi import FastAPI, Depends, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,9 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------
-# Templates
-# -------------------------
 templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/", response_class=HTMLResponse)
@@ -59,23 +53,21 @@ class Medication(BaseModel):
     dosage: str
     frequency: str
 
+class HealthProfile(BaseModel):
+    allergies: str = ""
+    conditions: str = ""
+    age: int | None = None
+
 # -------------------------
-# Create New Conversation
+# Conversations
 # -------------------------
 @app.post("/conversations")
 def create_conversation(user: str = Depends(get_current_user)):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT id FROM users WHERE username = ?",
-        (user,)
-    )
+    cursor.execute("SELECT id FROM users WHERE username = ?", (user,))
     user_row = cursor.fetchone()
-
-    if not user_row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="User not found")
 
     cursor.execute(
         "INSERT INTO conversations (user_id, created_at) VALUES (?, ?)",
@@ -106,7 +98,28 @@ def ask_question(request: QuestionRequest, user: str = Depends(get_current_user)
         datetime.utcnow().isoformat()
     ))
 
-    answer = ask_question_rag(request.question, user)
+    cursor.execute("SELECT id FROM users WHERE username = ?", (user,))
+    user_row = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT allergies, conditions, age
+        FROM health_profiles
+        WHERE user_id = ?
+    """, (user_row["id"],))
+
+    profile = cursor.fetchone()
+
+    profile_context = ""
+    if profile:
+        profile_context = f"""
+User Health Profile:
+Allergies: {profile['allergies']}
+Medical Conditions: {profile['conditions']}
+Age: {profile['age']}
+"""
+
+    enhanced_question = profile_context + "\nUser Question:\n" + request.question
+    answer = ask_question_rag(enhanced_question, user)
 
     cursor.execute("""
         INSERT INTO messages (conversation_id, sender, content, timestamp)
@@ -124,44 +137,158 @@ def ask_question(request: QuestionRequest, user: str = Depends(get_current_user)
     return {"answer": answer}
 
 # -------------------------
+# Messages
+# -------------------------
+@app.get("/messages/{conversation_id}")
+def get_messages(conversation_id: int, user: str = Depends(get_current_user)):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT conversations.id
+        FROM conversations
+        JOIN users ON conversations.user_id = users.id
+        WHERE conversations.id = ? AND users.username = ?
+    """, (conversation_id, user))
+
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    cursor.execute("""
+        SELECT sender, content, timestamp
+        FROM messages
+        WHERE conversation_id = ?
+        ORDER BY id ASC
+    """, (conversation_id,))
+
+    messages = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    return {"messages": messages}
+
+# -------------------------
 # Medications
 # -------------------------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-notes_path = os.path.join(BASE_DIR, "user_notes.json")
-
-if not os.path.exists(notes_path):
-    with open(notes_path, "w") as f:
-        json.dump({"medications": []}, f)
-
 @app.post("/add-medication")
 def add_medication(med: Medication, user: str = Depends(get_current_user)):
-    with open(notes_path, "r") as f:
-        data = json.load(f)
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    data["medications"].append(med.dict())
+    cursor.execute("SELECT id FROM users WHERE username = ?", (user,))
+    user_row = cursor.fetchone()
 
-    with open(notes_path, "w") as f:
-        json.dump(data, f, indent=2)
+    cursor.execute("""
+        INSERT INTO medications (user_id, name, dosage, frequency)
+        VALUES (?, ?, ?, ?)
+    """, (
+        user_row["id"],
+        med.name,
+        med.dosage,
+        med.frequency
+    ))
+
+    conn.commit()
+    conn.close()
 
     return {"message": "Medication added successfully"}
 
 @app.get("/medications")
 def get_medications(user: str = Depends(get_current_user)):
-    with open(notes_path, "r") as f:
-        data = json.load(f)
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    return data
+    cursor.execute("SELECT id FROM users WHERE username = ?", (user,))
+    user_row = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT name, dosage, frequency
+        FROM medications
+        WHERE user_id = ?
+    """, (user_row["id"],))
+
+    meds = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    return {"medications": meds}
 
 @app.delete("/medication/{name}")
 def delete_medication(name: str, user: str = Depends(get_current_user)):
-    with open(notes_path, "r") as f:
-        data = json.load(f)
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    data["medications"] = [
-        med for med in data["medications"] if med["name"] != name
-    ]
+    cursor.execute("SELECT id FROM users WHERE username = ?", (user,))
+    user_row = cursor.fetchone()
 
-    with open(notes_path, "w") as f:
-        json.dump(data, f, indent=2)
+    cursor.execute("""
+        DELETE FROM medications
+        WHERE user_id = ? AND name = ?
+    """, (user_row["id"], name))
+
+    conn.commit()
+    conn.close()
 
     return {"message": "Medication removed"}
+
+# -------------------------
+# Health Profile
+# -------------------------
+@app.post("/update-profile")
+def update_profile(profile: HealthProfile, user: str = Depends(get_current_user)):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM users WHERE username = ?", (user,))
+    user_row = cursor.fetchone()
+
+    cursor.execute("SELECT id FROM health_profiles WHERE user_id = ?", (user_row["id"],))
+    existing = cursor.fetchone()
+
+    if existing:
+        cursor.execute("""
+            UPDATE health_profiles
+            SET allergies = ?, conditions = ?, age = ?
+            WHERE user_id = ?
+        """, (
+            profile.allergies,
+            profile.conditions,
+            profile.age,
+            user_row["id"]
+        ))
+    else:
+        cursor.execute("""
+            INSERT INTO health_profiles (user_id, allergies, conditions, age)
+            VALUES (?, ?, ?, ?)
+        """, (
+            user_row["id"],
+            profile.allergies,
+            profile.conditions,
+            profile.age
+        ))
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "Profile updated successfully"}
+
+@app.get("/profile")
+def get_profile(user: str = Depends(get_current_user)):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM users WHERE username = ?", (user,))
+    user_row = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT allergies, conditions, age
+        FROM health_profiles
+        WHERE user_id = ?
+    """, (user_row["id"],))
+
+    profile = cursor.fetchone()
+    conn.close()
+
+    if profile:
+        return dict(profile)
+
+    return {"allergies": "", "conditions": "", "age": None}

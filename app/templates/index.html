@@ -41,7 +41,6 @@ display:flex;flex-direction:column;height:70vh;
 #question{flex:1;padding:12px;border-radius:25px;border:1px solid #ccc;}
 #sendBtn{margin-left:10px;padding:12px 20px;border-radius:25px;border:none;background:#2e7d32;color:white;cursor:pointer;}
 
-/* Loading dots */
 .dots::after {
   content: "";
   animation: dots 1.2s steps(3, end) infinite;
@@ -83,8 +82,7 @@ display:flex;flex-direction:column;height:70vh;
 </div>
 
 <script>
-
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded", async function(){
 
     const token = localStorage.getItem("token");
 
@@ -124,15 +122,13 @@ document.addEventListener("DOMContentLoaded", function(){
     const medBtn = document.getElementById("medBtn");
 
     profileBtn.onclick = function(){
-        if(profileMenu.style.display === "none" || profileMenu.style.display === ""){
-            profileMenu.style.display = "block";
-        } else {
-            profileMenu.style.display = "none";
-        }
+        profileMenu.style.display =
+            (profileMenu.style.display === "block") ? "none" : "block";
     };
 
     logoutBtn.onclick = function(){
         localStorage.removeItem("token");
+        localStorage.removeItem("conversation_id");
         window.location.href = "/";
     };
 
@@ -161,10 +157,34 @@ document.addEventListener("DOMContentLoaded", function(){
             const data = await res.json();
             currentConversationId = data.conversation_id;
 
+            localStorage.setItem("conversation_id", currentConversationId);
+
         } catch (err) {
             console.error("Conversation error:", err);
         } finally {
             conversationCreating = false;
+        }
+    }
+
+    /* ===== LOAD OLD MESSAGES ===== */
+    async function loadMessages(){
+
+        if (!currentConversationId) return;
+
+        const res = await fetch(`/messages/${currentConversationId}`, {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        const data = await res.json();
+
+        chat.innerHTML = "";
+
+        if (data.messages) {
+            data.messages.forEach(msg => {
+                addMessage(msg.content, msg.sender);
+            });
         }
     }
 
@@ -223,11 +243,20 @@ document.addEventListener("DOMContentLoaded", function(){
 
         chat.innerHTML = "";
         currentConversationId = null;
+        localStorage.removeItem("conversation_id");
 
         await createConversation();
     };
 
-    createConversation();
+    /* ===== INIT ===== */
+    const savedConversation = localStorage.getItem("conversation_id");
+
+    if (savedConversation) {
+        currentConversationId = parseInt(savedConversation);
+        await loadMessages();   // 🔥 reload previous chat
+    } else {
+        await createConversation();
+    }
 
     sendBtn.onclick = askQuestion;
     input.addEventListener("keypress",function(e){

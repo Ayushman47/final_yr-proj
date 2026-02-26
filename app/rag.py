@@ -4,23 +4,14 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from chromadb import PersistentClient
 import os
 
-# -------------------------
-# Device Setup
-# -------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# -------------------------
-# Chroma DB Setup
-# -------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 chroma_path = os.path.join(BASE_DIR, "chroma_db")
 
 client = PersistentClient(path=chroma_path)
 collection = client.get_collection(name="rag_otc_pdf")
 
-# -------------------------
-# Lazy Model Loading
-# -------------------------
 embedding_model = None
 rerank_model = None
 
@@ -28,7 +19,6 @@ def load_models():
     global embedding_model, rerank_model
 
     if embedding_model is None:
-        print("🔄 Loading embedding model...")
         embedding_model = SentenceTransformer(
             "sentence-transformers/all-mpnet-base-v2",
             device=device,
@@ -36,7 +26,6 @@ def load_models():
         )
 
     if rerank_model is None:
-        print("🔄 Loading reranker model...")
         rerank_model = CrossEncoder(
             "cross-encoder/ms-marco-MiniLM-L-6-v2",
             device=device,
@@ -44,101 +33,115 @@ def load_models():
             max_length=512
         )
 
-# -------------------------
-# Conversation Memory (Per User)
-# -------------------------
-conversation_memory = {}   # { username: [q1, q2] }
+conversation_memory = {}
 
-# -------------------------
-# Ollama LLM Call
-# -------------------------
-def get_ollama_response(prompt: str):
+def get_ollama_response(system_prompt: str, user_prompt: str):
     try:
         response = requests.post(
-            "http://localhost:11434/api/generate",
+            "http://localhost:11434/api/chat",
             json={
                 "model": "llama3.2",
-                "prompt": prompt,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
                 "stream": False,
                 "options": {
-                    "temperature": 0.2,
+                    "temperature": 0.0,   # deterministic
+                    "top_p": 0.9,
                     "num_predict": 120
                 }
             }
         )
+        return response.json()["message"]["content"]
+    except:
+        return "⚠️ Ollama not running."
 
-        return response.json()["response"]
 
-    except requests.exceptions.ConnectionError:
-        return "⚠️ Ollama is not running. Please start Ollama."
-
-# -------------------------
-# Main RAG Function
-# -------------------------
 def ask_question_rag(question: str, username: str):
 
     global conversation_memory
 
-    # Initialize memory for user if not exists
+    # ---------------- FIRST ROUND ----------------
     if username not in conversation_memory:
-        conversation_memory[username] = []
 
-    # Store question
-    conversation_memory[username].append(question)
+        conversation_memory[username] = {
+            "initial_question": question
+        }
 
-    # Keep only last 2 questions
-    conversation_memory[username] = conversation_memory[username][-2:]
+        system_prompt = """
+You are a health chatbot.
 
-    # Previous question (if exists)
-    memory_text = "\n".join(conversation_memory[username][:-1])
+The user has described a symptom.
 
-    # Load models if needed
-    load_models()
+Ask exactly TWO short clarifying questions.
 
-    # Expand query
-    expanded_query = f"Medical treatment question: {question}"
-    query_embedding = embedding_model.encode(expanded_query).tolist()
+Ask about:
+- Duration of symptoms
+- Severity level
+- Other associated symptoms
 
-    # Retrieve
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=8
-    )
-
-    retrieved_docs = results["documents"][0]
-
-    # Rerank
-    pairs = [[question, doc] for doc in retrieved_docs]
-    scores = rerank_model.predict(pairs)
-
-    ranked_docs = [
-        doc for _, doc in sorted(zip(scores, retrieved_docs), reverse=True)
-    ]
-
-    # Build context
-    context = "\n\n".join(ranked_docs[:3])
-
-    # Prompt
-    prompt = f"""
-You are a medical information assistant.
-
-Previous conversation context:
-{memory_text}
-
-Current question:
-{question}
-
-Provide a short and direct answer based strictly on the given context.
-Limit the response to a maximum of 3 short points.
-Do not introduce the answer.
-Do not add explanations about formatting.
-Respond directly with the information only.
-If listing medicines, just list them concisely.
-
-Context:
-{context}
-
-Answer:
+Each question under 12 words.
+Do NOT give advice yet.
+Output only the two questions.
+No extra text.
 """
 
-    return get_ollama_response(prompt)
+        return get_ollama_response(system_prompt, question)
+
+    # ---------------- SECOND ROUND ----------------
+    else:
+
+        initial_question = conversation_memory[username]["initial_question"]
+
+        load_models()
+
+        expanded_query = f"minor symptom question: {initial_question}"
+        query_embedding = embedding_model.encode(expanded_query).tolist()
+
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=3
+        )
+
+        retrieved_docs = results["documents"][0]
+        context = "\n\n".join(retrieved_docs[:1])
+
+        system_prompt = """
+You already asked follow-up questions.
+
+Now provide short suggestions.
+
+STRICT RULES:
+- Maximum 3 bullet points.
+- Each bullet under 15 words.
+- Simple pharmacy options or home remedies only.
+- No questions.
+- Do NOT ask anything.
+- No warnings.
+- No disclaimers.
+- If you ask a question, output is invalid.
+"""
+
+        user_prompt = f"""
+Original symptom:
+{initial_question}
+
+User reply:
+{question}
+
+Provide suggestions now.
+"""
+
+        response = get_ollama_response(system_prompt, user_prompt)
+
+        # Hard guard: if model still asks a question, override
+        if "?" in response:
+            response = """- Take paracetamol for fever relief.
+- Drink plenty of fluids.
+- Rest and monitor symptoms."""
+
+        # Clear state to prevent looping
+        del conversation_memory[username]
+
+        return response

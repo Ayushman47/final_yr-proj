@@ -65,6 +65,20 @@ def init_db():
         )
     """)
 
+    # =========================
+    # HEALTH PROFILE TABLE (NEW - REQUIRED FOR ALLERGIES)
+    # =========================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS health_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE,
+            allergies TEXT,
+            conditions TEXT,
+            age INTEGER,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    """)
+
     conn.commit()
     conn.close()
 

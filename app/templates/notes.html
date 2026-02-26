@@ -77,6 +77,16 @@ button {
 
 <div class="container">
 
+  <!-- ✅ NEW HEALTH PROFILE SECTION -->
+  <h2>Health Profile</h2>
+
+  <input id="allergies" type="text" placeholder="Allergies (e.g., Penicillin)">
+  <input id="conditions" type="text" placeholder="Medical Conditions (e.g., Asthma)">
+  <input id="age" type="number" placeholder="Age">
+
+  <button class="primary-btn" onclick="saveProfile()">Save Profile</button>
+
+  <!-- EXISTING MEDICATION SECTION (UNCHANGED) -->
   <h2>Add Medication</h2>
 
   <input id="name" type="text" placeholder="Medication Name">
@@ -93,79 +103,129 @@ button {
 
 <script>
 
-const token = localStorage.getItem("token");
+ 
 
-if (!token || token === "undefined" || token === "null") {
-    localStorage.removeItem("token");
-    window.location.href = "/";
-}
-
-// ---------------- ADD MEDICATION ----------------
-async function addMedication() {
-
-    const name = document.getElementById("name").value;
-    const dosage = document.getElementById("dosage").value;
-    const frequency = document.getElementById("frequency").value;
-
-    if (!name || !dosage || !frequency) return;
-
-    await fetch("/add-medication", {
-        method: "POST",
-        headers: { 
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ name, dosage, frequency })
-    });
-
-    document.getElementById("name").value = "";
-    document.getElementById("dosage").value = "";
-    document.getElementById("frequency").value = "";
-
+    const API_BASE = "http://127.0.0.1:8000";
+    
+    const token = localStorage.getItem("token");
+    
+    if (!token || token === "undefined" || token === "null") {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+    }
+    
+    // ---------------- SAVE PROFILE ----------------
+    async function saveProfile() {
+    
+        const allergies = document.getElementById("allergies").value;
+        const conditions = document.getElementById("conditions").value;
+        const age = document.getElementById("age").value;
+    
+        await fetch(`${API_BASE}/update-profile`, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+                allergies,
+                conditions,
+                age: age ? parseInt(age) : null
+            })
+        });
+    
+        alert("Health profile saved successfully!");
+    }
+    
+    // ---------------- LOAD PROFILE ----------------
+    async function loadProfile() {
+    
+        const response = await fetch(`${API_BASE}/profile`, {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+    
+        if (!response.ok) return;
+    
+        const data = await response.json();
+    
+        document.getElementById("allergies").value = data.allergies || "";
+        document.getElementById("conditions").value = data.conditions || "";
+        document.getElementById("age").value = data.age || "";
+    }
+    
+    // ---------------- ADD MEDICATION ----------------
+    async function addMedication() {
+    
+        const name = document.getElementById("name").value;
+        const dosage = document.getElementById("dosage").value;
+        const frequency = document.getElementById("frequency").value;
+    
+        if (!name || !dosage || !frequency) return;
+    
+        await fetch(`${API_BASE}/add-medication`, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ name, dosage, frequency })
+        });
+    
+        document.getElementById("name").value = "";
+        document.getElementById("dosage").value = "";
+        document.getElementById("frequency").value = "";
+    
+        loadMedications();
+    }
+    
+    // ---------------- LOAD MEDICATIONS ----------------
+    async function loadMedications() {
+    
+        const response = await fetch(`${API_BASE}/medications`, {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+    
+        if (!response.ok) return;
+    
+        const data = await response.json();
+    
+        const list = document.getElementById("medList");
+        list.innerHTML = "";
+    
+        data.medications.forEach(med => {
+            list.innerHTML += `
+                <div class="med-card">
+                    <strong>${med.name}</strong><br>
+                    Dosage: ${med.dosage}<br>
+                    Frequency: ${med.frequency}<br>
+                    <button class="delete-btn" onclick="deleteMedication('${med.name}')">Delete</button>
+                </div>
+            `;
+        });
+    }
+    
+    // ---------------- DELETE ----------------
+    async function deleteMedication(name) {
+    
+        await fetch(`${API_BASE}/medication/${name}`, {
+            method: "DELETE",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+    
+        loadMedications();
+    }
+    
+    // Load everything
+    loadProfile();
     loadMedications();
-}
-
-// ---------------- LOAD MEDICATIONS ----------------
-async function loadMedications() {
-
-    const response = await fetch("/medications", {
-        headers: {
-            "Authorization": "Bearer " + token
-        }
-    });
-
-    const data = await response.json();
-
-    const list = document.getElementById("medList");
-    list.innerHTML = "";
-
-    data.medications.forEach(med => {
-        list.innerHTML += `
-            <div class="med-card">
-                <strong>${med.name}</strong><br>
-                Dosage: ${med.dosage}<br>
-                Frequency: ${med.frequency}<br>
-                <button class="delete-btn" onclick="deleteMedication('${med.name}')">Delete</button>
-            </div>
-        `;
-    });
-}
-
-// ---------------- DELETE ----------------
-async function deleteMedication(name) {
-
-    await fetch(`/medication/${name}`, {
-        method: "DELETE",
-        headers: {
-            "Authorization": "Bearer " + token
-        }
-    });
-
-    loadMedications();
-}
-
-loadMedications();
-
+    
+    
 </script>
 
 </body>
