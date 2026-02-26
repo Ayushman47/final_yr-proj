@@ -4,6 +4,11 @@
       "name": "tamul",
       "dosage": "2l",
       "frequency": "3"
+    },
+    {
+      "name": "pan",
+      "dosage": "2",
+      "frequency": "3"
     }
   ]
 }
