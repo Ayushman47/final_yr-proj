@@ -1,162 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login | Medical Assistant</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <title>Login | Health Assist</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-green: #22c55e;
+            --dark-green: #16a34a;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1e293b;
+        }
+
         body {
             margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #2e7d32, #1b5e20);
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            color: white;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: rgba(34, 197, 94, 0.2);
+            border-radius: 50%;
+            top: -100px;
+            left: -100px;
+            filter: blur(80px);
         }
 
         .card {
-            background: white;
-            color: #333;
+            background: var(--glass-bg);
+            color: var(--text-main);
             padding: 40px;
-            border-radius: 16px;
-            width: 350px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-radius: 24px;
+            width: 360px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeInScale 0.5s ease-out;
+            z-index: 10;
         }
 
-        h2 {
-            text-align: center;
-            margin-bottom: 30px;
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
+
+        .logo-area { text-align: center; margin-bottom: 30px; }
+        .logo-area span { font-size: 40px; display: block; margin-bottom: 10px; }
+        h2 { text-align: center; margin: 0 0 10px 0; font-weight: 700; color: #064e3b; }
+        p { text-align: center; font-size: 14px; color: #64748b; margin-bottom: 30px; }
+        label { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; margin-left: 4px; letter-spacing: 0.5px; }
 
         input {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
+            padding: 14px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
             font-size: 14px;
+            background: #f8fafc;
+            box-sizing: border-box;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-green);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
         }
 
         button {
             width: 100%;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 14px;
+            border-radius: 12px;
             border: none;
-            background: #2e7d32;
+            background: var(--primary-green);
             color: white;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 16px;
             cursor: pointer;
-            margin-bottom: 10px;
+            transition: 0.3s;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
         }
 
         button:hover {
-            background: #1b5e20;
+            background: var(--dark-green);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(34, 197, 94, 0.4);
         }
 
-        .toggle {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 13px;
-            cursor: pointer;
-            color: #2e7d32;
-        }
-
-        .error {
-            color: red;
-            font-size: 13px;
-            text-align: center;
-        }
+        .toggle { text-align: center; margin-top: 20px; font-size: 14px; cursor: pointer; color: #065f46; font-weight: 500; }
+        .toggle:hover { text-decoration: underline; }
+        .error { color: #ef4444; font-size: 13px; text-align: center; margin-top: 15px; min-height: 20px; }
     </style>
 </head>
-
 <body>
 
 <div class="card">
-    <h2 id="formTitle">Login</h2>
+    <div class="logo-area">
+        <span>💊</span>
+        <h2 id="formTitle">Health Assist</h2>
+        <p id="formSub">Log in to your secure dashboard</p>
+    </div>
 
-    <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password">
+    <label>USERNAME</label>
+    <input type="text" id="username" placeholder="e.g. johndoe">
+    
+    <label>PASSWORD</label>
+    <input type="password" id="password" placeholder="••••••••">
 
     <button onclick="submitForm()">Login</button>
-
     <div class="error" id="errorMsg"></div>
 
     <div class="toggle" onclick="toggleMode()">
-        Don't have an account? Sign up
+        Don't have an account? <strong>Sign up</strong>
     </div>
 </div>
 
 <script>
-
 let isLogin = true;
-
 function toggleMode() {
     isLogin = !isLogin;
-
-    document.getElementById("formTitle").innerText = isLogin ? "Login" : "Sign Up";
+    document.getElementById("formTitle").innerText = isLogin ? "Welcome Back" : "Create Account";
+    document.getElementById("formSub").innerText = isLogin ? "Log in to your health dashboard" : "Join our secure medical network";
     document.querySelector("button").innerText = isLogin ? "Login" : "Sign Up";
-    document.querySelector(".toggle").innerText =
-        isLogin ? "Don't have an account? Sign up" : "Already have an account? Login";
-
+    document.querySelector(".toggle").innerHTML = isLogin ? "Don't have an account? <strong>Sign up</strong>" : "Already have an account? <strong>Login</strong>";
     document.getElementById("errorMsg").innerText = "";
 }
 
 async function submitForm() {
-
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
     const errorMsg = document.getElementById("errorMsg");
-
-    if (!username || !password) {
-        errorMsg.innerText = "Please fill all fields.";
-        return;
-    }
+    if (!username || !password) { errorMsg.innerText = "Please fill all fields."; return; }
 
     const endpoint = isLogin ? "login" : "signup";
+    const btn = document.querySelector("button");
+    btn.innerText = isLogin ? "Authenticating..." : "Creating Account...";
+    btn.disabled = true;
 
     try {
-
-        // ✅ Compatible with your FastAPI backend (query params)
-        const response = await fetch(
-            `http://127.0.0.1:8000/${endpoint}?username=${username}&password=${password}`,
-            {
-                method: "POST"
-            }
-        );
-
+        const response = await fetch(`http://127.0.0.1:8000/${endpoint}?username=${username}&password=${password}`, { method: "POST" });
         const data = await response.json();
 
         if (!response.ok) {
             errorMsg.innerText = data.detail || "Error occurred.";
+            btn.innerText = isLogin ? "Login" : "Sign Up";
+            btn.disabled = false;
             return;
         }
 
         if (isLogin) {
-
-            if (!data.access_token) {
-                errorMsg.innerText = "Login failed: No token received.";
-                return;
-            }
-
-            // ✅ Save token correctly
+            if (!data.access_token) { errorMsg.innerText = "No token received."; return; }
             localStorage.setItem("token", data.access_token);
-
-            // ✅ Redirect to index
             window.location.href = "/index";
-
         } else {
-            alert("Account created! Please login.");
+            alert("Account created! You can now log in.");
             toggleMode();
         }
-
     } catch (err) {
-        errorMsg.innerText = "Server not reachable.";
+        errorMsg.innerText = "Backend server not reachable.";
+        btn.innerText = isLogin ? "Login" : "Sign Up";
+        btn.disabled = false;
     }
 }
-
 </script>
-
 </body>
 </html>
