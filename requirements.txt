@@ -5,3 +5,7 @@ chromadb
 torch
 PyPDF2
 requests
+python-multipart
+passlib[bcrypt]
+python-jose[cryptography]
+jinja2

@@ -14,7 +14,17 @@
             --border-color: rgba(226, 232, 240, 0.3);
             --user-bubble: #2e7d32;
             --bot-bubble: rgba(241, 245, 249, 0.8);
+
+            /* Light Sidebar colors (Green/White theme) */
+            --sb-bg: #f8fafc;
+            --sb-hover: #f1f5f9;
+            --sb-active: #e2e8f0;
+            --sb-border: rgba(0,0,0,0.06);
+            --sb-text: #1e293b;
+            --sb-text-muted: #64748b;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -27,6 +37,7 @@
             overflow: hidden;
         }
 
+        /* ══════════════════════ TOPBAR ══════════════════════ */
         .topbar {
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(10px);
@@ -36,37 +47,228 @@
             border-bottom: 1px solid var(--border-color);
             z-index: 100;
         }
+        .hamburger {
+            font-size: 22px; cursor: pointer; margin-right: 20px;
+            color: var(--primary-green);
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px;
+            transition: background 0.15s;
+        }
+        .hamburger:hover { background: rgba(46,125,50,0.1); }
 
-        .hamburger { font-size: 24px; cursor: pointer; margin-right: 20px; color: var(--primary-green); }
-
+        /* ══════════════════════ SIDEBAR ══════════════════════ */
         .sidebar {
             position: fixed;
-            top: 0; left: 0; width: 280px; height: 100%;
-            background: var(--dark-green);
-            color: white; padding: 30px 20px;
+            top: 0; left: 0;
+            width: 300px; height: 100%;
+            background: var(--sb-bg);
+            color: var(--sb-text);
             transform: translateX(-100%);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            font-size: 14px;
         }
         .sidebar.open { transform: translateX(0); }
-        .sidebar h2 { margin-top: 0; font-weight: 700; color: #a5d6a7; }
-        .sidebar button {
-            width: 100%;
-            padding: 12px; margin-bottom: 12px;
-            border: none; border-radius: 10px; cursor: pointer;
-            background: rgba(255,255,255,0.1); color: white;
-            text-align: left; font-weight: 500; transition: 0.2s;
-        }
-        .sidebar button:hover { background: rgba(255,255,255,0.2); }
 
+        /* ── Top section ── */
+        .sb-top {
+            padding: 12px;
+            border-bottom: 1px solid var(--sb-border);
+        }
+        .sb-new-chat {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            background: white;
+            color: var(--sb-text);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.15s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .sb-new-chat:hover {
+            background: var(--sb-hover);
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+        }
+        .sb-new-chat svg {
+            width: 18px; height: 18px;
+            stroke: currentColor; fill: none;
+            stroke-width: 2; stroke-linecap: round;
+        }
+
+        /* ── Conversation list ── */
+        .sb-conversations {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .sb-conversations::-webkit-scrollbar { width: 4px; }
+        .sb-conversations::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.12);
+            border-radius: 4px;
+        }
+        .sb-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--sb-text-muted);
+            padding: 12px 12px 6px;
+        }
+
+        /* ── Conversation item ── */
+        .conv-item-wrapper {
+            position: relative;
+            border-radius: 8px;
+            transition: background 0.12s;
+            margin-bottom: 1px;
+        }
+        .conv-item-wrapper:hover { background: var(--sb-hover); }
+        .conv-item-wrapper.active { background: var(--sb-active); }
+
+        .conv-item {
+            display: block;
+            width: 100%;
+            padding: 10px 38px 10px 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            color: var(--sb-text);
+            text-align: left;
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.4;
+            /* 2-line with ellipsis for better readability */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
+            word-break: break-word;
+        }
+        .conv-item-wrapper.active .conv-item { font-weight: 500; }
+
+        /* Gradient fade on hover (ChatGPT-style) */
+        .conv-item-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 60px; height: 100%;
+            border-radius: 0 8px 8px 0;
+            background: linear-gradient(to left, var(--sb-bg) 0%, transparent 100%);
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.12s;
+        }
+        .conv-item-wrapper:hover::after {
+            background: linear-gradient(to left, var(--sb-hover) 0%, transparent 100%);
+        }
+        .conv-item-wrapper.active::after {
+            background: linear-gradient(to left, var(--sb-active) 0%, transparent 100%);
+        }
+
+        .conv-delete-btn {
+            position: absolute;
+            top: 50%; right: 6px;
+            transform: translateY(-50%);
+            width: 28px; height: 28px;
+            border: none; border-radius: 6px;
+            background: transparent;
+            color: var(--sb-text-muted);
+            font-size: 18px; font-weight: 400;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            transition: background 0.12s, color 0.12s;
+            opacity: 0;
+        }
+        .conv-item-wrapper:hover .conv-delete-btn { opacity: 1; }
+        .conv-delete-btn:hover {
+            background: rgba(239,68,68,0.25);
+            color: #f87171;
+        }
+
+        /* ── Bottom section ── */
+        .sb-bottom {
+            padding: 8px;
+            border-top: 1px solid var(--sb-border);
+        }
+        .sb-bottom-btn {
+            width: 100%;
+            padding: 10px 14px;
+            border: none; border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            color: var(--sb-text);
+            text-align: left;
+            font-size: 13.5px;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.12s;
+        }
+        .sb-bottom-btn:hover { background: var(--sb-hover); }
+        .sb-bottom-btn svg {
+            width: 18px; height: 18px;
+            stroke: currentColor; fill: none;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .sb-bottom-btn.danger { color: #f87171; }
+        .sb-bottom-btn.danger:hover { background: rgba(239,68,68,0.15); }
+
+        .sb-admin-btn {
+            display: none;
+            color: #a5d6a7;
+        }
+        .sb-admin-btn:hover { background: rgba(165,214,167,0.1); }
+
+        /* Pop animation */
+        @keyframes buttonPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .btn-pop { animation: buttonPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        /* Submenu styles */
+        .sb-submenu {
+            display: none;
+            flex-direction: column;
+            padding-left: 24px;
+            margin-top: -4px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.02);
+            border-left: 2px solid var(--primary-green);
+        }
+        .sb-submenu.open { display: flex; }
+        .sb-submenu .sb-bottom-btn {
+            font-size: 13px;
+            padding: 8px 12px;
+        }
+
+        /* ══════════════════════ OVERLAY ══════════════════════ */
         .overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.2); display: none; z-index: 999;
-            backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.4); display: none; z-index: 999;
         }
         .overlay.show { display: block; }
 
+        /* ══════════════════════ CHAT AREA ══════════════════════ */
         .main-wrapper { flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
         .chat-container {
             width: 100%;
@@ -97,182 +299,1157 @@
         .bot { background: var(--bot-bubble); color: var(--text-dark); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.5); }
 
         .input-area { display: flex; padding: 20px; background: rgba(255, 255, 255, 0.4); border-top: 1px solid var(--border-color); }
-        #question { flex: 1; padding: 14px 22px; border-radius: 30px; border: 1px solid rgba(0,0,0,0.1); outline: none; background: rgba(255,255,255,0.7); }
-        #sendBtn { margin-left: 12px; padding: 0 28px; border-radius: 30px; border: none; background: var(--primary-green); color: white; font-weight: 600; cursor: pointer; }
+        #question { flex: 1; padding: 14px 22px; border-radius: 30px; border: 1px solid rgba(0,0,0,0.1); outline: none; background: rgba(255,255,255,0.7); font-family: inherit; font-size: 14px; }
+        #sendBtn { margin-left: 12px; padding: 0 28px; border-radius: 30px; border: none; background: var(--primary-green); color: white; font-weight: 600; cursor: pointer; font-size: 14px; }
         #sendBtn:disabled { background: #94a3b8; cursor: not-allowed; }
 
-        .emergency-banner { background: #fee2e2; color: #991b1b; padding: 12px; display: none; text-align: center; font-weight: 700; border-bottom: 1px solid #fecaca; }
-        .disclaimer-area { padding: 12px; text-align: center; font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.2); }
+        .emergency-banner { background: #fee2e2; color: #991b1b; padding: 12px; text-align: center; font-weight: 700; border-bottom: 1px solid #fecaca; }
+        .disclaimer-area { padding: 10px 16px; text-align: center; font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.2); border-top: 1px solid var(--border-color); }
         
         .dots::after { content: ""; animation: dots 1.2s steps(3, end) infinite; }
         @keyframes dots { 0% { content: ""; } 33% { content: "."; } 66% { content: ".."; } 100% { content: "..."; } }
+
+        /* ── TOAST NOTIFICATIONS ── */
+        #toastContainer {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(15, 23, 42, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            backdrop-filter: blur(5px);
+            animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        .toast.success { border-left: 4px solid #4ade80; }
+        .toast.error { border-left: 4px solid #f87171; }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes toastOut {
+            to { opacity: 0; transform: translateY(-20px); }
+        }
     </style>
 </head>
 <body>
+<div id="toastContainer"></div>
 
+<!-- ══════════ TOPBAR ══════════ -->
 <div class="topbar">
     <span id="toggleSidebar" class="hamburger">☰</span>
-    <strong style="color: #2e7d32; font-size: 1.2rem;">Health Assist</strong>
+    <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+        <strong style="color: #2e7d32; font-size: 1.1rem; font-weight: 800;">Health Assist</strong>
+        <span id="topUserName" style="font-size: 12px; color: var(--text-muted); font-weight: 500; background: rgba(0,0,0,0.05); padding: 4px 10px; border-radius: 20px; display: none;"></span>
+    </div>
 </div>
 
+<!-- ══════════ SIDEBAR ══════════ -->
 <div id="sidebar" class="sidebar">
-    <h2>Menu</h2>
-    <button id="profileBtn">👤 My Health Profile</button>
-    <div id="profileMenu" style="display:none; padding-left: 15px; margin-bottom: 10px;">
-        <button id="medBtn">📋 Medications</button>
-        <button id="logoutBtn" style="background: #ef4444; color: white;">Logout</button>
+
+    <!-- Top: New Chat -->
+    <div class="sb-top">
+        <button id="newChatBtn" class="sb-new-chat">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New chat
+        </button>
     </div>
-    <hr style="opacity: 0.1; margin: 15px 0;">
-    <button id="newChatBtn" style="background: rgba(255,255,255,0.15);">+ New Conversation</button>
+
+    <!-- Middle: Conversation list -->
+    <div id="convList" class="sb-conversations">
+        <div class="sb-section-label">Recent</div>
+        <!-- Rendered by JS -->
+    </div>
+
+    <!-- Bottom: Profile / Admin / Logout -->
+    <div class="sb-bottom">
+        <!-- Parent Profile Button -->
+        <button id="profileParentBtn" class="sb-bottom-btn">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            My Profile
+            <svg id="profileChevron" style="margin-left:auto; width:14px; height:14px; transition: transform 0.2s;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
+        <!-- Nested Submenu -->
+        <div id="profileSubmenu" class="sb-submenu">
+            <button id="profileBtn" class="sb-bottom-btn">
+                <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Health Settings
+            </button>
+            <button id="medBtn" class="sb-bottom-btn">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Medications
+            </button>
+            <button id="findDoctorBtn" class="sb-bottom-btn">
+                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Find Doctors
+            </button>
+            <button id="modelsBtn" class="sb-bottom-btn">
+                <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                AI Models
+            </button>
+            <button id="adminPanelBtn" class="sb-bottom-btn sb-admin-btn">
+                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                Manage Docs (Admin)
+            </button>
+        </div>
+
+        <button id="logoutBtn" class="sb-bottom-btn danger">
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Log out
+        </button>
+    </div>
 </div>
 
 <div id="overlay" class="overlay"></div>
 
-<div class="main-wrapper">
-    <div class="chat-container">
-        <div id="emergencyBanner" class="emergency-banner">
-            ⚠️ EMERGENCY ALERT: Call 112 or visit the nearest hospital immediately.
+<!-- ══════════ CUSTOM CONFIRM MODAL ══════════ -->
+<div id="confirmModal" class="overlay" style="z-index: 3000; display: none; align-items: center; justify-content: center;">
+    <div style="background: white; width: 90%; max-width: 400px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center;">
+        <div style="width: 60px; height: 60px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #ef4444;">
+            <svg width="30" height="30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         </div>
-        <div id="chat">
-            <div class="message bot">Welcome to <strong>Health Assist</strong>. I can provide suggestions for minor symptoms. How can I help today?</div>
-        </div>
-        <div class="input-area">
-            <input type="text" id="question" placeholder="Describe your symptoms..." autocomplete="off"/>
-            <button id="sendBtn">Send</button>
-        </div>
-        <div class="disclaimer-area">
-            <strong>MEDICAL DISCLAIMER:</strong> Evidence-based suggestions only. Not a substitute for professional medical advice.
+        <h3 id="confirmTitle" style="margin-bottom: 10px; font-weight: 700;">Confirm Action</h3>
+        <p id="confirmText" style="color: #64748b; font-size: 14px; margin-bottom: 25px;">Are you sure you want to proceed?</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <button id="confirmCancelBtn" style="padding: 12px; background: #f1f5f9; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Cancel</button>
+            <button id="confirmOkBtn" style="padding: 12px; background: #ef4444; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Confirm</button>
         </div>
     </div>
 </div>
 
+<!-- ══════════ MODELS MODAL ══════════ -->
+<div id="modelsModal" class="overlay" style="z-index: 2000; display: none; align-items: center; justify-content: center;">
+    <div style="background: white; width: 95%; max-width: 850px; padding: 25px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); position: relative; max-height: 90vh; overflow-y: auto;">
+        <button onclick="closeModelsModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+        <h2 style="margin: 0 0 20px 0; color: var(--primary-green); font-size: 1.5rem;">AI Models Management</h2>
+        <p id="onboardingMsg" style="display: none; background: #fef3c7; color: #92400e; padding: 10px; border-radius: 8px; font-weight: 600; margin-bottom: 20px;">
+            Welcome to Health Assist! Please download and select an AI model to start chatting offline.
+        </p>
+        
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <!-- Installed Models -->
+            <div style="flex: 1; min-width: 300px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; background: #f8fafc;">
+                <h3 style="margin-top: 0; display: flex; justify-content: space-between; align-items: center;">
+                    Installed Models
+                    <button onclick="loadModels()" style="background:none; border:none; cursor:pointer; color:var(--primary-green);">🔄</button>
+                </h3>
+                <div id="installedModelsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
+                    Loading...
+                </div>
+            </div>
+            
+            <!-- Recommended Models -->
+            <div style="flex: 1; min-width: 300px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
+                <h3 style="margin-top: 0;">Recommended Models</h3>
+                <div id="recommendedModelsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+        </div>
+        
+        <div id="downloadProgressContainer" style="margin-top: 20px; display: none; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; background: #f0fdf4;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center;">
+                <div>
+                    <strong id="downloadModelName" style="color: var(--primary-green);">Downloading...</strong>
+                    <div id="downloadStats" style="font-size: 12px; color: #64748b; margin-top: 2px;">Waiting to start...</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span id="downloadPercent" style="font-weight: 700; color: var(--primary-green);">0%</span>
+                    <button onclick="cancelDownload()" style="background: white; border: 1px solid #ef4444; color: #ef4444; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600;">Cancel</button>
+                </div>
+            </div>
+            <div style="width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin-top: 8px;">
+                <div id="downloadBar" style="height: 100%; background: var(--primary-green); width: 0%; transition: width 0.3s;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ ADMIN MODAL ══════════ -->
+<div id="adminModal" class="overlay" style="z-index: 2000; display: none; align-items: center; justify-content: center;">
+    <div style="background: white; width: 95%; max-width: 700px; padding: 25px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); position: relative;">
+        <button onclick="closeAdminModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+        
+        <h2 style="margin: 0 0 20px 0; color: var(--primary-green); font-size: 1.5rem;">Admin Dashboard</h2>
+        
+        <!-- Tabs -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <button id="tabDocs" onclick="switchAdminTab('docs')" style="padding: 8px 16px; border: none; background: #e8f5e9; color: var(--primary-green); border-radius: 8px; cursor: pointer; font-weight: 600;">Documents</button>
+            <button id="tabUsers" onclick="switchAdminTab('users')" style="padding: 8px 16px; border: none; background: transparent; color: #64748b; border-radius: 8px; cursor: pointer; font-weight: 600;">Users</button>
+        </div>
+
+        <!-- Documents Tab -->
+        <div id="paneDocs">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="docSearch" placeholder="Search documents..." oninput="filterDocs()" style="flex: 1; padding: 10px 15px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 14px;">
+                <button onclick="triggerUpload()" style="padding: 10px 20px; background: var(--primary-green); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">+ Upload</button>
+            </div>
+
+            <div id="uploadStatus" style="display: none; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
+                    <span id="uploadFileName" style="font-weight: 600; color: #1b5e20;">File.pdf</span>
+                    <span id="uploadPercent">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                    <div id="uploadBar" style="width: 0%; height: 100%; background: var(--primary-green); transition: width 0.3s;"></div>
+                </div>
+                <p id="ingestHint" style="font-size: 11px; color: #666; margin-top: 5px;">Uploading and indexing... please wait.</p>
+            </div>
+
+            <div id="docList" style="max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 12px; padding: 5px;">
+                <!-- Docs rendered here -->
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="paneUsers" style="display: none;">
+            <div id="userList" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 12px; padding: 5px;">
+                <!-- Users rendered here -->
+            </div>
+        </div>
+
+        <!-- Stats Footer -->
+        <div id="adminStats" style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
+            <div><div id="statDocs" style="font-weight: 700; color: var(--primary-green);">0</div><div style="font-size: 10px; color: #64748b;">DOCS</div></div>
+            <div><div id="statChunks" style="font-weight: 700; color: var(--primary-green);">0</div><div style="font-size: 10px; color: #64748b;">CHUNKS</div></div>
+            <div><div id="statUsers" style="font-weight: 700; color: var(--primary-green);">0</div><div style="font-size: 10px; color: #64748b;">USERS</div></div>
+            <div><div id="statSize" style="font-weight: 700; color: var(--primary-green);">0MB</div><div style="font-size: 10px; color: #64748b;">DB SIZE</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ PASSWORD RESET MODAL ══════════ -->
+<div id="pwdResetModal" class="overlay" style="z-index: 4000; display: none; align-items: center; justify-content: center;">
+    <div style="background: white; width: 90%; max-width: 400px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <h3 id="pwdResetTitle" style="margin-bottom: 20px; color: var(--primary-green);">Reset Password</h3>
+        <input type="password" id="newPwdInput" placeholder="Enter new password" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px; font-size: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <button onclick="closePwdModal()" style="padding: 12px; background: #f1f5f9; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Cancel</button>
+            <button id="pwdConfirmBtn" style="padding: 12px; background: var(--primary-green); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Reset Now</button>
+        </div>
+    </div>
+</div>
+
+<div class="main-wrapper">
+    <div class="chat-container">
+        <div id="chat"></div>
+        <div class="disclaimer-area">
+            ⚕️ Health Assist provides general OTC guidance only. It is not a substitute for professional medical advice.
+        </div>
+        <div class="input-area">
+            <input id="question" placeholder="Ask me anything — symptoms, medications, or general questions..." />
+            <button id="sendBtn">Send</button>
+            <button id="stopBtn" style="display: none; margin-left: 10px; padding: 0 20px; border-radius: 30px; border: 1px solid #ef4444; background: white; color: #ef4444; font-weight: 600; cursor: pointer; font-size: 14px;">Stop</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ SCRIPT ══════════ -->
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const token = localStorage.getItem("token");
-    if (!token || token === "null" || token === "undefined") {
-        window.location.href = "/";
+function showToast(message, type = 'success') {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' ? '✅' : '❌';
+    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = "toastOut 0.3s forwards";
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+const token = localStorage.getItem("token");
+if (!token) window.location.href = "/";
+
+let currentConversationId = null;
+
+const chatDiv      = document.getElementById("chat");
+const questionInput = document.getElementById("question");
+const sendBtn      = document.getElementById("sendBtn");
+const sidebar      = document.getElementById("sidebar");
+const overlay      = document.getElementById("overlay");
+const convListDiv  = document.getElementById("convList");
+
+// ── Sidebar toggle ──
+document.getElementById("toggleSidebar").onclick = () => {
+    sidebar.classList.add("open");
+    overlay.classList.add("show");
+};
+overlay.onclick = closeSidebar;
+
+function closeSidebar() {
+    sidebar.classList.remove("open");
+    overlay.classList.remove("show");
+}
+
+// ── Bottom buttons ──
+document.getElementById("logoutBtn").onclick = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/";
+};
+document.getElementById("profileParentBtn").onclick = () => {
+    const submenu = document.getElementById("profileSubmenu");
+    const chevron = document.getElementById("profileChevron");
+    const isOpen = submenu.classList.toggle("open");
+    chevron.style.transform = isOpen ? "rotate(180deg)" : "rotate(0deg)";
+};
+document.getElementById("profileBtn").onclick = () => {
+    window.location.href = "/notes";
+};
+document.getElementById("medBtn").onclick = () => {
+    window.location.href = "/notes";
+};
+document.getElementById("modelsBtn").onclick = () => {
+    openModelsModal();
+};
+document.getElementById("findDoctorBtn").onclick = () => {
+    findDoctors();
+};
+document.getElementById("newChatBtn").onclick = async (e) => {
+    const target = e.currentTarget;
+    target.classList.add("btn-pop");
+    setTimeout(() => target.classList.remove("btn-pop"), 300);
+    await createNewConversation();
+    closeSidebar();
+};
+
+// Apply pop to all sidebar buttons
+document.querySelectorAll(".sb-bottom-btn, .sb-new-chat").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+        const target = e.currentTarget;
+        if (!target) return;
+        target.classList.add("btn-pop");
+        setTimeout(() => target.classList.remove("btn-pop"), 300);
+    });
+});
+
+// ── Chat messages ──
+function addMessage(content, sender) {
+    const div = document.createElement("div");
+    div.className = `message ${sender}`;
+    div.innerText = content;
+    
+    // Auto-inject "Find Doctors" button if bot mentions it
+    if (sender === "bot") {
+        const lower = content.toLowerCase();
+        if (lower.includes("find doctors") || lower.includes("find a clinic") || lower.includes("nearest hospital")) {
+            const btn = document.createElement("button");
+            btn.innerText = "📍 Find Nearby Doctors";
+            btn.style = "display: block; margin-top: 10px; padding: 10px 20px; background: white; color: var(--primary-green); border: 2px solid var(--primary-green); border-radius: 20px; font-weight: 700; cursor: pointer; font-size: 13px; transition: 0.2s;";
+            btn.onclick = () => findDoctors();
+            btn.onmouseover = () => { btn.style.background = "var(--primary-green)"; btn.style.color = "white"; };
+            btn.onmouseout = () => { btn.style.background = "white"; btn.style.color = "var(--primary-green)"; };
+            div.appendChild(btn);
+        }
+    }
+
+    chatDiv.appendChild(div);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+// ── Conversation list ──
+async function loadConversationList() {
+    try {
+        const res = await fetch("/conversations", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        const conversations = data.conversations || [];
+
+        // Keep the "Recent" label, clear items below it
+        convListDiv.innerHTML = '<div class="sb-section-label">Recent</div>';
+
+        if (conversations.length === 0) {
+            const empty = document.createElement("div");
+            empty.style.cssText = "color:var(--sb-text-muted); font-size:12px; padding:8px 14px;";
+            empty.textContent = "No conversations yet";
+            convListDiv.appendChild(empty);
+            return;
+        }
+
+        conversations.forEach(conv => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "conv-item-wrapper" + (conv.id === currentConversationId ? " active" : "");
+
+            const btn = document.createElement("button");
+            btn.className = "conv-item";
+            btn.textContent = conv.title || "New conversation";
+            btn.title = conv.title || "New conversation";
+            btn.onclick = (e) => {
+                const target = e.currentTarget.parentElement;
+                target.classList.add("btn-pop");
+                setTimeout(() => target.classList.remove("btn-pop"), 300);
+                switchConversation(conv.id);
+            };
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "conv-delete-btn";
+            delBtn.innerHTML = "🗑";
+            delBtn.title = "Delete";
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteConversation(conv.id);
+            };
+
+            wrapper.appendChild(btn);
+            wrapper.appendChild(delBtn);
+            convListDiv.appendChild(wrapper);
+        });
+    } catch (e) {
+        console.error("Error loading conversation list", e);
+    }
+}
+
+// ── Switch conversation ──
+async function switchConversation(convId) {
+    if (convId === currentConversationId) { closeSidebar(); return; }
+
+    currentConversationId = convId;
+    chatDiv.innerHTML = "";
+
+    try {
+        const res = await fetch(`/messages/${convId}`, {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+            data.messages.forEach(m => addMessage(m.content, m.sender));
+        } else {
+            addMessage("Hello! I am Health Assist. How can I help you today?", "bot");
+        }
+    } catch (e) {
+        console.error("Error loading messages", e);
+        addMessage("Could not load messages for this conversation.", "bot");
+    }
+
+    loadConversationList();
+    closeSidebar();
+}
+
+// ── Delete conversation ──
+function showConfirm(title, text, okLabel = "Confirm") {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("confirmModal");
+        const okBtn = document.getElementById("confirmOkBtn");
+        const cancelBtn = document.getElementById("confirmCancelBtn");
+        
+        document.getElementById("confirmTitle").innerText = title;
+        document.getElementById("confirmText").innerText = text;
+        okBtn.innerText = okLabel;
+        
+        modal.style.display = "flex";
+        
+        const cleanup = (val) => {
+            modal.style.display = "none";
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            resolve(val);
+        };
+        
+        okBtn.onclick = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
+    });
+}
+
+async function deleteConversation(convId) {
+    const confirmed = await showConfirm(
+        "Delete Chat?", 
+        "This will permanently delete all messages in this conversation.",
+        "Delete"
+    );
+    if (!confirmed) return;
+    
+    try {
+        const res = await fetch(`/conversations/${convId}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || "Could not delete", "error");
+            return;
+        }
+        if (convId === currentConversationId) {
+            currentConversationId = null;
+            chatDiv.innerHTML = "";
+            await createNewConversation();
+        }
+        loadConversationList();
+        showToast("Conversation deleted");
+    } catch (e) { console.error("Error deleting", e); showToast("Delete failed", "error"); }
+}
+
+// ── New conversation ──
+async function createNewConversation() {
+    chatDiv.innerHTML = "";
+    currentConversationId = null;
+    try {
+        const res = await fetch("/conversations", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ title: "" })
+        });
+        const data = await res.json();
+        currentConversationId = data.conversation_id;
+        addMessage("Hello! I am Health Assist. How can I help you today?", "bot");
+        loadConversationList();
+    } catch (e) { console.error("Error creating conversation", e); }
+}
+
+let abortController = null;
+
+// ── Send message ──
+async function sendMessage() {
+    const text = questionInput.value.trim();
+    if (!text) return;
+
+    if (!currentConversationId) await createNewConversation();
+
+    addMessage(text, "user");
+    questionInput.value = "";
+    sendBtn.disabled = true;
+    document.getElementById("stopBtn").style.display = "block";
+
+    const loading = document.createElement("div");
+    loading.className = "message bot dots";
+    loading.id = "loadingMsg";
+    chatDiv.appendChild(loading);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+
+    abortController = new AbortController();
+
+    try {
+        const res = await fetch("/ask", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            signal: abortController.signal,
+            body: JSON.stringify({
+                question: text,
+                conversation_id: currentConversationId
+            })
+        });
+        const data = await res.json();
+        document.getElementById("loadingMsg")?.remove();
+        if (data.answer) {
+            addMessage(data.answer, "bot");
+        } else {
+            addMessage("Error: " + JSON.stringify(data), "bot");
+        }
+        loadConversationList();
+    } catch (e) {
+        document.getElementById("loadingMsg")?.remove();
+        if (e.name === 'AbortError') {
+            addMessage("Response stopped by user.", "bot");
+        } else {
+            addMessage("Sorry, there was an error processing your request.", "bot");
+        }
+    } finally {
+        sendBtn.disabled = false;
+        document.getElementById("stopBtn").style.display = "none";
+        questionInput.focus();
+        abortController = null;
+    }
+}
+
+document.getElementById("stopBtn").onclick = () => {
+    if (abortController) {
+        abortController.abort();
+    }
+};
+
+sendBtn.onclick = sendMessage;
+questionInput.onkeypress = (e) => { if (e.key === "Enter") sendMessage(); };
+
+// ── Admin Functions ──
+async function checkAdmin() {
+    try {
+        const res = await fetch("/me", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.is_admin) {
+            document.getElementById("adminPanelBtn").style.display = "flex";
+        }
+        if (data.username) {
+            const el = document.getElementById("topUserName");
+            el.textContent = "Welcome, " + data.username;
+            el.style.display = "inline-block";
+        }
+    } catch {}
+}
+
+async function openAdminModal() {
+    document.getElementById("adminModal").style.display = "flex";
+    switchAdminTab('docs');
+    loadAdminStats();
+}
+
+function closeAdminModal() {
+    document.getElementById("adminModal").style.display = "none";
+}
+
+function switchAdminTab(tab) {
+    const isDocs = tab === 'docs';
+    document.getElementById("paneDocs").style.display = isDocs ? 'block' : 'none';
+    document.getElementById("paneUsers").style.display = isDocs ? 'none' : 'block';
+    
+    document.getElementById("tabDocs").style.background = isDocs ? '#e8f5e9' : 'transparent';
+    document.getElementById("tabDocs").style.color = isDocs ? 'var(--primary-green)' : '#64748b';
+    
+    document.getElementById("tabUsers").style.background = !isDocs ? '#e8f5e9' : 'transparent';
+    document.getElementById("tabUsers").style.color = !isDocs ? 'var(--primary-green)' : '#64748b';
+    
+    if (isDocs) loadDocumentList();
+    else loadUserList();
+}
+
+async function loadAdminStats() {
+    try {
+        const res = await fetch("/admin/stats", { headers: { "Authorization": "Bearer " + token }});
+        const data = await res.json();
+        document.getElementById("statDocs").innerText = data.documents;
+        document.getElementById("statChunks").innerText = data.total_chunks;
+        document.getElementById("statUsers").innerText = data.users;
+        document.getElementById("statSize").innerText = data.db_size_mb + "MB";
+    } catch (e) {}
+}
+
+let allDocs = [];
+async function loadDocumentList() {
+    const list = document.getElementById("docList");
+    list.innerHTML = "Loading...";
+    try {
+        const res = await fetch("/admin/documents", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        allDocs = data.documents || [];
+        renderDocs(allDocs);
+    } catch (e) { list.innerHTML = "Error loading documents."; }
+}
+
+function renderDocs(docs) {
+    const list = document.getElementById("docList");
+    list.innerHTML = "";
+    if (docs.length === 0) {
+        list.innerHTML = "<p style='color: #666; font-size: 14px; text-align:center; padding: 20px;'>No documents found.</p>";
+        return;
+    }
+    docs.forEach(doc => {
+        const div = document.createElement("div");
+        div.style = "display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee;";
+        div.innerHTML = `
+            <div style="flex: 1; min-width: 0; padding-right: 15px;">
+                <div style="font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${doc.filename}</div>
+                <div style="font-size: 10.5px; color: #888;">Chunks: ${doc.chunk_count} • ${new Date(doc.created_at).toLocaleDateString()}</div>
+            </div>
+            <button onclick="deleteDoc(${doc.id})" style="background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 700; flex-shrink: 0;">Delete</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function filterDocs() {
+    const q = document.getElementById("docSearch").value.toLowerCase();
+    const filtered = allDocs.filter(d => d.filename.toLowerCase().includes(q));
+    renderDocs(filtered);
+}
+
+async function loadUserList() {
+    const list = document.getElementById("userList");
+    list.innerHTML = "Loading...";
+    try {
+        const res = await fetch("/admin/users", { headers: { "Authorization": "Bearer " + token }});
+        const data = await res.json();
+        list.innerHTML = "";
+        data.users.forEach(u => {
+            const div = document.createElement("div");
+            div.style = "display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee;";
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight: 600; font-size: 13.5px;">${u.username} ${u.is_admin ? '<span style="color:var(--primary-green); font-size:10px;">(Admin)</span>' : ''}</div>
+                    <div style="font-size: 10.5px; color: #888;">Joined: ${new Date(u.created_at).toLocaleDateString()}</div>
+                </div>
+                <button onclick="resetUserPwd(${u.id}, '${u.username}')" style="background: #f1f5f9; color: #64748b; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 700;">Reset Pwd</button>
+            `;
+            list.appendChild(div);
+        });
+    } catch (e) { list.innerHTML = "Error loading users."; }
+}
+
+let activeResetUserId = null;
+let activeResetUsername = "";
+
+async function resetUserPwd(id, username) {
+    activeResetUserId = id;
+    activeResetUsername = username;
+    document.getElementById("pwdResetTitle").innerText = `Reset Password for ${username}`;
+    document.getElementById("newPwdInput").value = "";
+    document.getElementById("pwdResetModal").style.display = "flex";
+}
+
+function closePwdModal() {
+    document.getElementById("pwdResetModal").style.display = "none";
+}
+
+document.getElementById("pwdConfirmBtn").onclick = async () => {
+    const newPwd = document.getElementById("newPwdInput").value.trim();
+    if (!newPwd) {
+        showToast("Please enter a password", "error");
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/admin/users/${activeResetUserId}/reset-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ new_password: newPwd })
+        });
+        if (res.ok) {
+            showToast(`Password for ${activeResetUsername} reset successfully!`);
+            closePwdModal();
+        } else {
+            showToast("Failed to update password.", "error");
+        }
+    } catch (e) { showToast("Error connecting to server.", "error"); }
+};
+
+async function deleteDoc(id) {
+    const confirmed = await showConfirm(
+        "Delete Document?",
+        "This will remove the PDF and its AI memory index permanently.",
+        "Delete"
+    );
+    if (!confirmed) return;
+    try {
+        const res = await fetch(`/admin/documents/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+            loadDocumentList();
+            showToast("Document deleted successfully");
+        } else {
+            const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+            showToast(err.detail || "Delete failed.", "error");
+        }
+    } catch (e) { showToast("Error deleting.", "error"); }
+}
+
+function triggerUpload() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf";
+    input.onchange = () => {
+        const file = input.files[0];
+        if (!file) return;
+
+        const statusDiv = document.getElementById("uploadStatus");
+        const bar = document.getElementById("uploadBar");
+        const percentText = document.getElementById("uploadPercent");
+        const nameText = document.getElementById("uploadFileName");
+        const hint = document.getElementById("ingestHint");
+
+        nameText.innerText = file.name;
+        statusDiv.style.display = "block";
+        bar.style.width = "0%";
+        percentText.innerText = "0%";
+        hint.innerText = "Uploading to server...";
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const xhr = new XMLHttpRequest();
+        
+        // Track Upload Progress
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                bar.style.width = percent + "%";
+                percentText.innerText = percent + "%";
+                if (percent === 100) {
+                    hint.innerText = "Processing & Indexing for AI... (Almost there)";
+                    bar.style.background = "#fbbf24"; // Amber during processing
+                }
+            }
+        };
+
+        xhr.onload = () => {
+            statusDiv.style.display = "none";
+            bar.style.background = "var(--primary-green)";
+            if (xhr.status === 200) {
+                loadDocumentList();
+                showToast("Document uploaded and indexed!");
+            } else {
+                let msg = "Upload failed";
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    msg = res.detail || msg;
+                } catch(e) {}
+                showToast(msg, "error");
+            }
+        };
+
+        xhr.onerror = () => {
+            statusDiv.style.display = "none";
+            showToast("Network error during upload.", "error");
+        };
+
+        xhr.open("POST", "/admin/upload-pdf");
+        xhr.setRequestHeader("Authorization", "Bearer " + token);
+        xhr.send(formData);
+    };
+    input.click();
+}
+
+const adminPanelBtn = document.getElementById("adminPanelBtn");
+if (adminPanelBtn) adminPanelBtn.onclick = openAdminModal;
+
+// ── Find Doctors ──
+function findDoctors() {
+    // 1. Internet Check
+    if (!navigator.onLine) {
+        alert("Internet connection required to find nearby doctors.");
         return;
     }
 
-    let currentConversationId = localStorage.getItem("conversation_id");
-    let isProcessing = false;
+    // 2. Geolocation Request
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
 
-    const chat = document.getElementById("chat");
-    const input = document.getElementById("question");
-    const sendBtn = document.getElementById("sendBtn");
-    const emergencyBanner = document.getElementById("emergencyBanner");
-
-    const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("overlay");
+    // Show a small hint
+    console.log("Requesting location...");
     
-    document.getElementById("toggleSidebar").onclick = () => { sidebar.classList.add("open"); overlay.classList.add("show"); };
-    overlay.onclick = () => { sidebar.classList.remove("open"); overlay.classList.remove("show"); };
-    
-    document.getElementById("profileBtn").onclick = () => {
-        const menu = document.getElementById("profileMenu");
-        menu.style.display = menu.style.display === "block" ? "none" : "block";
-    };
-    document.getElementById("logoutBtn").onclick = () => {
-        localStorage.clear();
-        window.location.href = "/";
-    };
-    document.getElementById("medBtn").onclick = () => window.location.href = "/notes";
-
-    async function apiRequest(url, method = "GET", body = null) {
-        const headers = { "Authorization": `Bearer ${token}` };
-        if (body) headers["Content-Type"] = "application/json";
-        try {
-            const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : null });
-            if (res.status === 401) {
-                localStorage.clear();
-                window.location.href = "/";
-                return null;
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            
+            // 3. Generate Google Maps Search URL
+            // Query for: doctors OR hospitals OR clinics
+            const query = encodeURIComponent("doctor hospital clinic");
+            const url = `https://www.google.com/maps/search/${query}/@${lat},${lon},14z`;
+            
+            // 4. Open in new tab
+            window.open(url, "_blank");
+            closeSidebar();
+        },
+        (error) => {
+            // 5. Handle Permission Denied / Errors
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Location permission required to find nearby doctors.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                default:
+                    alert("An unknown error occurred while getting location.");
+                    break;
             }
-            return await res.json();
-        } catch (err) { return null; }
-    }
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
 
-    function addMessage(text, type) {
-        const div = document.createElement("div");
-        div.className = `message ${type}`;
-        div.textContent = text;
-        chat.appendChild(div);
-        chat.scrollTop = chat.scrollHeight;
-    }
+// ── Models Management ──
+let hasActiveModel = false;
+let modelPollInterval = null;
 
-    async function ensureConversation() {
-        if (!currentConversationId || currentConversationId === "null") {
-            const data = await apiRequest("/conversations", "POST");
-            if (data && data.conversation_id) {
-                currentConversationId = data.conversation_id;
-                localStorage.setItem("conversation_id", currentConversationId);
-            }
-        }
-        return currentConversationId;
-    }
+const RECOMMENDED_MODELS = [
+    { name: "tinyllama", desc: "Fast & Lightweight", ram: "~1GB", speed: "Very Fast", size: "640MB" },
+    { name: "phi3:mini", desc: "Microsoft Phi-3 Mini", ram: "~4GB", speed: "Fast", size: "2.3GB" },
+    { name: "qwen2.5:3b", desc: "Qwen 2.5 3B", ram: "~4GB", speed: "Fast", size: "1.9GB" },
+    { name: "gemma:2b", desc: "Google Gemma 2B", ram: "~3GB", speed: "Fast", size: "1.7GB" }
+];
 
-    async function loadHistory() {
-        if (!currentConversationId) return;
-        const data = await apiRequest(`/messages/${currentConversationId}`);
-        if (data && data.messages) {
-            chat.innerHTML = "";
-            data.messages.forEach(msg => addMessage(msg.content, msg.sender));
-        }
-    }
-
-    async function askQuestion() {
-        const text = input.value.trim();
-        if (!text || isProcessing) return;
-
-        isProcessing = true;
-        sendBtn.disabled = true;
-
-        await ensureConversation();
-        const keywords = ["emergency", "heart attack", "chest pain", "heavy bleeding", "stroke"];
-        if (keywords.some(k => text.toLowerCase().includes(k))) {
-            emergencyBanner.style.display = "block";
-        }
-
-        addMessage(text, "user");
-        input.value = "";
-
-        const loading = document.createElement("div");
-        loading.className = "message bot";
-        loading.innerHTML = "Consulting knowledge base<span class='dots'></span>";
-        chat.appendChild(loading);
-        chat.scrollTop = chat.scrollHeight;
-
-        const response = await apiRequest("/ask", "POST", {
-            question: text,
-            conversation_id: parseInt(currentConversationId)
-        });
-        chat.removeChild(loading);
-        isProcessing = false;
-        sendBtn.disabled = false;
-
-        if (response && response.answer) {
-            if (response.answer.includes("EMERGENCY")) emergencyBanner.style.display = "block";
-            addMessage(response.answer, "bot");
+async function loadModels() {
+    try {
+        const res = await fetch("/api/models", { headers: { "Authorization": "Bearer " + token }});
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        hasActiveModel = !!data.active;
+        if (!hasActiveModel) {
+            document.getElementById("question").disabled = true;
+            document.getElementById("question").placeholder = "Please select a model from Settings first...";
+            document.getElementById("sendBtn").disabled = true;
         } else {
-            addMessage("⚠️ Error: AI server is busy or offline.", "bot");
+            document.getElementById("question").disabled = false;
+            document.getElementById("question").placeholder = "Ask me anything — symptoms, medications, or general questions...";
+            document.getElementById("sendBtn").disabled = false;
         }
+
+        renderModels(data.models || [], data.active);
+    } catch(e) {
+        console.error("Error loading models", e);
+    }
+}
+
+function renderModels(installed, active) {
+    const list = document.getElementById("installedModelsList");
+    list.innerHTML = "";
+    if (installed.length === 0) {
+        list.innerHTML = "<p style='color:#64748b; font-size:14px;'>No models installed.</p>";
+    } else {
+        installed.forEach(m => {
+            const isActive = m === active;
+            const div = document.createElement("div");
+            div.style = `padding: 12px; border: 1px solid ${isActive ? 'var(--primary-green)' : '#e2e8f0'}; border-radius: 10px; background: ${isActive ? '#f0fdf4' : 'white'}; display: flex; justify-content: space-between; align-items: center;`;
+            
+            const btnHtml = isActive ? 
+                `<span style="color: var(--primary-green); font-weight: 700; font-size: 13px;">Active ✓</span>` : 
+                `<button onclick="setActiveModel('${m}')" style="background:var(--primary-green); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">Select</button>`;
+                
+            div.innerHTML = `
+                <div>
+                    <strong style="font-size: 15px;">${m}</strong>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    ${btnHtml}
+                    <button onclick="deleteModel('${m}')" style="background:#fee2e2; color:#ef4444; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;" ${isActive ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>🗑</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
     }
 
-    document.getElementById("newChatBtn").onclick = async () => {
-        chat.innerHTML = "";
-        localStorage.removeItem("conversation_id");
-        currentConversationId = null;
-        await ensureConversation();
-        addMessage("Started a new session. How can I help?", "bot");
-        sidebar.classList.remove("open");
-        overlay.classList.remove("show");
-    };
+    const recList = document.getElementById("recommendedModelsList");
+    recList.innerHTML = "";
+    RECOMMENDED_MODELS.forEach(m => {
+        const isInstalled = installed.includes(m.name) || installed.includes(m.name + ":latest");
+        const div = document.createElement("div");
+        div.style = `padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: white;`;
+        
+        let btn = "";
+        if (isInstalled) {
+            btn = `<span style="color: #64748b; font-size: 12px; font-weight: 600;">Installed ✓</span>`;
+        } else {
+            btn = `<button onclick="pullModel('${m.name}')" style="background:var(--primary-green); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">Download</button>`;
+        }
 
-    if (currentConversationId) { loadHistory(); } else { ensureConversation(); }
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div>
+                    <strong style="font-size: 15px;">${m.name}</strong>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">${m.desc}</div>
+                </div>
+                ${btn}
+            </div>
+            <div style="display: flex; gap: 8px; font-size: 10px; color: #94a3b8; flex-wrap: wrap;">
+                <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">RAM: ${m.ram}</span>
+                <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">Size: ${m.size}</span>
+                <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">Speed: ${m.speed}</span>
+            </div>
+        `;
+        recList.appendChild(div);
+    });
+}
 
-    sendBtn.onclick = askQuestion;
-    input.onkeypress = (e) => { if(e.key === "Enter") askQuestion(); };
-});
+async function setActiveModel(modelName) {
+    try {
+        const res = await fetch("/api/models/active", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ model: modelName })
+        });
+        if (res.ok) {
+            showToast(`Active model set to ${modelName}`);
+            loadModels();
+            if (document.getElementById("onboardingMsg").style.display !== "none") {
+                closeModelsModal();
+            }
+        }
+    } catch(e) {}
+}
+
+async function deleteModel(modelName) {
+    const confirmed = await showConfirm("Delete Model?", `Are you sure you want to delete ${modelName}?`, "Delete");
+    if (!confirmed) return;
+    try {
+        const res = await fetch(`/api/models/${modelName}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+            showToast("Model deleted.");
+            loadModels();
+        } else {
+            showToast("Failed to delete model.", "error");
+        }
+    } catch(e) {}
+}
+
+async function pullModel(modelName) {
+    try {
+        const res = await fetch("/api/models/pull", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ model: modelName })
+        });
+        if (res.ok) {
+            showToast("Download started!");
+            startPollingProgress();
+        } else {
+            const data = await res.json();
+            showToast(data.detail || "Could not start download", "error");
+        }
+    } catch(e) {}
+}
+
+function startPollingProgress() {
+    const container = document.getElementById("downloadProgressContainer");
+    container.style.display = "block";
+    document.getElementById("downloadBar").style.background = "var(--primary-green)";
+    if (modelPollInterval) clearInterval(modelPollInterval);
+    
+    modelPollInterval = setInterval(async () => {
+        try {
+            const res = await fetch("/api/models/progress", { headers: { "Authorization": "Bearer " + token }});
+            const data = await res.json();
+            
+            if (data.status === "idle") {
+                clearInterval(modelPollInterval);
+                container.style.display = "none";
+                return;
+            }
+            
+            document.getElementById("downloadModelName").innerText = `Downloading ${data.model}...`;
+            document.getElementById("downloadPercent").innerText = data.percent + "%";
+            document.getElementById("downloadBar").style.width = data.percent + "%";
+            
+            if (data.downloaded && data.total) {
+                let statsStr = `${data.downloaded} / ${data.total}`;
+                if (data.speed) statsStr += ` • ${data.speed}`;
+                document.getElementById("downloadStats").innerText = statsStr;
+            }
+            
+            if (data.status === "success") {
+                clearInterval(modelPollInterval);
+                document.getElementById("downloadPercent").innerText = "Completed!";
+                document.getElementById("downloadStats").innerText = "Download complete.";
+                setTimeout(() => { container.style.display = "none"; loadModels(); }, 2000);
+                showToast(`${data.model} downloaded successfully!`);
+            } else if (data.status === "failed") {
+                clearInterval(modelPollInterval);
+                document.getElementById("downloadPercent").innerText = "Failed";
+                document.getElementById("downloadStats").innerText = "An error occurred.";
+                document.getElementById("downloadBar").style.background = "#ef4444";
+                setTimeout(() => { container.style.display = "none"; document.getElementById("downloadBar").style.background = "var(--primary-green)"; }, 3000);
+                showToast("Model download failed.", "error");
+            } else if (data.status === "cancelled") {
+                clearInterval(modelPollInterval);
+                document.getElementById("downloadPercent").innerText = "Cancelled";
+                document.getElementById("downloadStats").innerText = "Download was cancelled.";
+                document.getElementById("downloadBar").style.background = "#94a3b8";
+                setTimeout(() => { container.style.display = "none"; document.getElementById("downloadBar").style.background = "var(--primary-green)"; }, 2000);
+                showToast("Download cancelled.");
+            }
+        } catch(e) {
+            console.error("Poll error", e);
+        }
+    }, 1000);
+}
+
+async function cancelDownload() {
+    try {
+        const res = await fetch("/api/models/cancel", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) {
+            showToast("Failed to cancel download.", "error");
+        }
+    } catch(e) {}
+}
+
+function openModelsModal() {
+    document.getElementById("modelsModal").style.display = "flex";
+    loadModels();
+}
+
+function closeModelsModal() {
+    if (!hasActiveModel) {
+        showToast("Please select a model to chat.", "error");
+    }
+    document.getElementById("modelsModal").style.display = "none";
+}
+
+// ── Init ──
+async function init() {
+    checkAdmin();
+    // Preload models check
+    try {
+        const mRes = await fetch("/api/models", { headers: { "Authorization": "Bearer " + token }});
+        if (mRes.ok) {
+            const mData = await mRes.json();
+            hasActiveModel = !!mData.active;
+            if (!hasActiveModel) {
+                document.getElementById("onboardingMsg").style.display = "block";
+                openModelsModal();
+            }
+        }
+    } catch(e) {}
+    
+    try {
+        const res = await fetch("/conversations", {
+
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        if (data.conversations && data.conversations.length > 0) {
+            currentConversationId = data.conversations[0].id;
+            const msgRes = await fetch(`/messages/${currentConversationId}`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const msgData = await msgRes.json();
+            if (msgData.messages && msgData.messages.length > 0) {
+                msgData.messages.forEach(m => addMessage(m.content, m.sender));
+            } else {
+                addMessage("Hello! I am Health Assist. How can I help you today?", "bot");
+            }
+        } else {
+            await createNewConversation();
+        }
+        loadConversationList();
+    } catch (e) { console.error("Init error", e); }
+}
+
+init();
 </script>
+
 </body>
 </html>

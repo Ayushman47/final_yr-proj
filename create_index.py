@@ -50,7 +50,7 @@ chunks = [chunk for chunk in chunks if len(chunk.split()) > 10]
 # Embedding Model
 # ------------------------
 embedding_model = SentenceTransformer(
-    "sentence-transformers/all-mpnet-base-v2",
+    "sentence-transformers/all-MiniLM-L6-v2",
     device=device
 )
 
@@ -74,10 +74,13 @@ except:
 
 collection = client.create_collection(name=collection_name)
 
+source_name = os.path.basename(pdf_path)  # e.g. "oct.pdf"
+
 collection.add(
     documents=chunks,
     embeddings=chunk_embeddings.tolist(),
-    ids=[str(i) for i in range(len(chunks))]
+    ids=[str(i) for i in range(len(chunks))],
+    metadatas=[{"source": source_name}] * len(chunks)
 )
 
 print("Indexing complete. Database saved at:", chroma_path)

@@ -1,20 +1,39 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from pydantic import BaseModel
+import os
+import sqlite3
 
-from app.database import get_connection
+from app.database import get_db
 
-SECRET_KEY = "supersecretkey"
+# Load from environment variable — fallback only for local development
+SECRET_KEY = os.getenv("SECRET_KEY", "DEVELOPMENT_SECRET_KEY_CHANGE_ME_IN_PRODUCTION")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours for a desktop app
 
 pwd_context = CryptContext(
     schemes=["pbkdf2_sha256"],
     deprecated="auto"
 )
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
 router = APIRouter()
+
+
+# ---------------- MODELS ----------------
+
+class User(BaseModel):
+    id: int
+    username: str
+    is_admin: bool
+
+class AuthRequest(BaseModel):
+    username: str
+    password: str
 
 
 # ---------------- PASSWORD ----------------
@@ -30,7 +49,7 @@ def verify_password(plain_password, hashed_password):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -38,23 +57,28 @@ def create_access_token(data: dict):
 # ---------------- SIGNUP ----------------
 
 @router.post("/signup")
-def signup(username: str, password: str):
+def signup(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
+    cursor = db.cursor()
 
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT id FROM users WHERE username = ?", (body.username,))
     if cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=400, detail="User already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already exists"
+        )
 
-    cursor.execute(
-        "INSERT INTO users (username, password) VALUES (?, ?)",
-        (username, hash_password(password))
-    )
-
-    conn.commit()
-    conn.close()
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            (body.username, hash_password(body.password))
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not create user"
+        )
 
     return {"message": "User created successfully"}
 
@@ -62,18 +86,18 @@ def signup(username: str, password: str):
 # ---------------- LOGIN ----------------
 
 @router.post("/login")
-def login(username: str, password: str):
+def login(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
+    cursor = db.cursor()
 
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT * FROM users WHERE username = ?", (body.username,))
     user = cursor.fetchone()
 
-    conn.close()
-
-    if not user or not verify_password(password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user or not verify_password(body.password, user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     token = create_access_token({"sub": user["username"]})
 
@@ -85,20 +109,43 @@ def login(username: str, password: str):
 
 # ---------------- AUTH DEPENDENCY ----------------
 
-def get_current_user(authorization: str = Header(None)):
-
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: sqlite3.Connection = Depends(get_db)
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
-        token = authorization.split(" ")[1]
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-
+        username: str = payload.get("sub")
         if username is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
 
-        return username
+    cursor = db.cursor()
+    cursor.execute("SELECT id, username, is_admin FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    
+    if row is None:
+        raise credentials_exception
+        
+    return User(
+        id=row["id"],
+        username=row["username"],
+        is_admin=bool(row["is_admin"])
+    )
 
-    except (JWTError, IndexError):
-        raise HTTPException(status_code=401, detail="Invalid token")
+
+# ---------------- ADMIN DEPENDENCY ----------------
+
+def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user

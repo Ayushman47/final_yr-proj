@@ -1,0 +1,57 @@
+name: Build Health Assist Desktop App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install System Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+
+    - name: Install Inno Setup
+      run: choco install innosetup
+
+    - name: Install Application Dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Setup Ollama Binary (Optional)
+      run: |
+        # Creates empty directories so PyInstaller doesn't fail if they are missing
+        mkdir -p ollama_bin
+        mkdir -p models
+        # You can curl the ollama.exe here if you want it bundled:
+        # curl -L https://ollama.com/download/ollama-windows-amd64.zip -o ollama.zip
+        # tar -xf ollama.zip -C ollama_bin
+
+    - name: Build with PyInstaller (Folder Mode)
+      run: |
+        pyinstaller run_app.spec --clean
+
+    - name: Create Windows Installer (Inno Setup)
+      run: |
+        iscc installer.iss
+
+    - name: Upload Installer Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: HealthAssist-Setup-EXE
+        path: dist/HealthAssist_Setup.exe
+        compression-level: 9

@@ -1,203 +1,508 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Health Dashboard | Health Assist</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-    :root {
-        --primary-green: #22c55e;
-        --dark-green: #1b5e20;
-        --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        --card-bg: rgba(30, 41, 59, 0.7);
-        --input-bg: rgba(15, 23, 42, 0.8);
-        --text-muted: #94a3b8;
-        --border-color: rgba(51, 65, 85, 0.5);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Dashboard | Health Assist</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #2e7d32;
+            --dark-green: #1b5e20;
+            --bg-light: #f8fafc;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: rgba(226, 232, 240, 0.8);
+            
+            /* Sidebar colors synced with index.html */
+            --sb-bg: #f8fafc;
+            --sb-hover: #f1f5f9;
+            --sb-active: #e2e8f0;
+            --sb-border: rgba(0,0,0,0.06);
+            --sb-text: #1e293b;
+            --sb-text-muted: #64748b;
+        }
 
-    body {
-        font-family: 'Inter', sans-serif;
-        background: var(--bg-gradient);
-        background-attachment: fixed;
-        color: white; margin: 0; min-height: 100vh;
-    }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .topbar {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        padding: 12px 24px;
-        display: flex; align-items: center;
-        border-bottom: 1px solid var(--border-color);
-        position: sticky; top: 0; z-index: 100;
-    }
-    .hamburger { font-size: 22px; cursor: pointer; margin-right: 20px; color: #22c55e; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
 
-    .sidebar {
-        position: fixed;
-        top: 0; left: 0; width: 260px; height: 100%;
-        background: var(--dark-green); color: white; padding: 30px 20px;
-        transform: translateX(-100%);
-        transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 1000; box-shadow: 10px 0 30px rgba(0,0,0,0.3);
-    }
-    .sidebar.open { transform: translateX(0); }
-    .sidebar button {
-        width: 100%;
-        padding: 12px; margin-bottom: 10px;
-        border: none; border-radius: 8px; cursor: pointer;
-        background: transparent; color: white; text-align: left;
-        font-weight: 500; transition: 0.2s;
-    }
-    .sidebar button:hover { background: rgba(255,255,255,0.1); }
+        /* ══════════════════════ SIDEBAR ══════════════════════ */
+        .sidebar {
+            width: 280px;
+            background: var(--sb-bg);
+            border-right: 1px solid var(--sb-border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
 
-    .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; }
-    @media (max-width: 850px) { .container { grid-template-columns: 1fr; } }
+        .sb-header {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sb-header strong {
+            font-size: 1.1rem;
+            color: var(--primary-green);
+            font-weight: 800;
+        }
 
-    .card { background: var(--card-bg); backdrop-filter: blur(12px); padding: 30px; border-radius: 24px; border: 1px solid var(--border-color); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-    h2 { font-size: 1.25rem; margin-top: 0; margin-bottom: 25px; color: #22c55e; }
-    label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.8px; }
+        .sb-nav {
+            flex: 1;
+            padding: 0 12px;
+        }
 
-    input { width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--input-bg); color: white; outline: none; box-sizing: border-box; transition: 0.2s; }
-    input:focus { border-color: #22c55e; background: rgba(15, 23, 42, 1); }
+        .sb-btn {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            color: var(--sb-text);
+            text-align: left;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .sb-btn:hover { background: var(--sb-hover); }
+        .sb-btn.active { background: var(--sb-active); font-weight: 600; }
+        .sb-btn svg { width: 18px; height: 18px; stroke-width: 2; }
+        
+        /* Pop animation */
+        @keyframes buttonPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .btn-pop { animation: buttonPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
-    .btn { padding: 14px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; width: 100%; transition: 0.3s; }
-    .primary-btn { background: #22c55e; color: #064e3b; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2); }
-    .primary-btn:hover { background: #16a34a; transform: translateY(-2px); }
+        /* Pop animation */
+        @keyframes buttonPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .btn-pop { animation: buttonPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
-    .med-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
-    .med-item { background: var(--input-bg); padding: 18px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); border-left: 4px solid #22c55e; }
-    .med-info strong { display: block; font-size: 1rem; color: white; }
-    .med-info span { font-size: 13px; color: var(--text-muted); }
+        /* Submenu styles */
+        .sb-submenu {
+            display: none;
+            flex-direction: column;
+            padding-left: 24px;
+            margin-top: -4px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.02);
+            border-left: 2px solid var(--primary-green);
+        }
+        .sb-submenu.open { display: flex; }
+        .sb-submenu .sb-btn {
+            font-size: 13px;
+            padding: 8px 12px;
+        }
 
-    .delete-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 8px 14px; border-radius: 8px; font-size: 12px; border: 1px solid rgba(239, 68, 68, 0.2); cursor: pointer; }
-    .delete-btn:hover { background: #ef4444; color: white; }
+        .sb-footer {
+            padding: 16px;
+            border-top: 1px solid var(--sb-border);
+        }
 
-    .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: none; z-index: 999; backdrop-filter: blur(4px); }
-    .overlay.show { display: block; }
-</style>
+        /* ══════════════════════ MAIN CONTENT ══════════════════════ */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dashboard-header {
+            width: 100%;
+            max-width: 1000px;
+            margin-bottom: 40px;
+            animation: fadeIn 0.6s ease-out;
+        }
+        .dashboard-header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .dashboard-header p {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 30px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: white;
+            padding: 32px;
+            border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            border: 1px solid var(--border-color);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        input {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 14px;
+            transition: all 0.2s;
+            outline: none;
+        }
+        input:focus {
+            border-color: var(--primary-green);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1);
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border-radius: 14px;
+            border: none;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .primary-btn {
+            background: var(--primary-green);
+            color: white;
+            width: 100%;
+        }
+        .primary-btn:hover { background: var(--dark-green); transform: translateY(-1px); }
+
+        /* Medication List */
+        .med-list {
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .med-item {
+            padding: 16px 20px;
+            background: #f8fafc;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid transparent;
+            transition: 0.2s;
+        }
+        .med-item:hover { border-color: var(--primary-green); background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        
+        .med-name { font-weight: 700; display: block; margin-bottom: 2px; }
+        .med-meta { font-size: 13px; color: var(--text-muted); }
+        
+        .remove-btn {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid #fee2e2;
+            background: #fff;
+            color: #ef4444;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .remove-btn:hover { background: #fee2e2; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--sb-border); }
+            .grid { grid-template-columns: 1fr; }
+            .main-content { padding: 20px; }
+        }
+    </style>
 </head>
 <body>
 
-<div class="topbar">
-  <span id="toggleSidebar" class="hamburger">☰</span>
-  <strong style="color: #22c55e;">Health Assist Dashboard</strong>
-</div>
-
-<div id="sidebar" class="sidebar">
-  <h3 style="margin-bottom: 30px; opacity: 0.9; font-weight: 700;">Menu</h3>
-  <button onclick="window.location.href='/index'">🏠 Back to Chat</button>
-  <hr style="opacity: 0.1; margin: 20px 0;">
-  <button onclick="logout()" style="background:#ef4444; color:white; text-align: center; font-weight: 700;">Logout</button>
-</div>
-
-<div id="overlay" class="overlay"></div>
-
-<div class="container">
-  <div class="card">
-    <h2>👤 Health Profile</h2>
-    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 25px; line-height: 1.5;">This data personalizes your local AI responses for maximum safety.</p>
-    <label>KNOWN ALLERGIES</label>
-    <input id="allergies" type="text" placeholder="e.g. Penicillin, Peanuts">
-    <label>CHRONIC CONDITIONS</label>
-    <input id="conditions" type="text" placeholder="e.g. Asthma, Diabetes">
-    <label>USER AGE</label>
-    <input id="age" type="number" placeholder="Enter your age">
-    <button class="btn primary-btn" onclick="saveProfile()">Update Profile</button>
-  </div>
-
-  <div class="card">
-    <h2>💊 Medication Management</h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-        <div>
-            <label>MEDICINE NAME</label>
-            <input id="name" type="text" placeholder="e.g. Paracetamol">
+    <aside class="sidebar">
+        <div class="sb-header">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="#2e7d32" stroke-width="3" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <strong>Health Assist</strong>
         </div>
-        <div>
-            <label>DOSAGE</label>
-            <input id="dosage" type="text" placeholder="e.g. 500mg">
+        
+        <nav class="sb-nav">
+            <button onclick="window.location.href='/index'" class="sb-btn">
+                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Back to Chat
+            </button>
+            
+            <!-- Parent Profile Button -->
+            <button id="profileParentBtn" class="sb-btn">
+                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                My Profile
+                <svg id="profileChevron" style="margin-left:auto; width:14px; height:14px; transition: transform 0.2s;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <!-- Nested Submenu -->
+            <div id="profileSubmenu" class="sb-submenu open">
+                <button class="sb-btn active" onclick="location.reload()">
+                    <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    Dashboard
+                </button>
+                <button id="findDoctorBtn" class="sb-btn">
+                    <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Find Doctors
+                </button>
+            </div>
+        </nav>
+
+        <div class="sb-footer">
+            <button onclick="logout()" class="sb-btn" style="color: #ef4444;">
+                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign Out
+            </button>
         </div>
-    </div>
-    <label>FREQUENCY</label>
-    <input id="frequency" type="text" placeholder="e.g. Twice daily after food">
-    <button class="btn primary-btn" onclick="addMedication()">+ Add Medication</button>
-    <h2 style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 25px;">Active Medications</h2>
-    <div id="medList" class="med-grid"></div>
-  </div>
-</div>
+    </aside>
 
-<script>
-const token = localStorage.getItem("token");
-if (!token || token === "null") { window.location.href = "/"; }
+    <main class="main-content">
+        <header class="dashboard-header">
+            <h1>Welcome, <span id="userNameDisplay">User</span></h1>
+            <p>Manage your health profile and medications to personalize your AI experience.</p>
+        </header>
 
-const sidebar = document.getElementById("sidebar");
-const overlay = document.getElementById("overlay");
-document.getElementById("toggleSidebar").onclick = () => { sidebar.classList.add("open"); overlay.classList.add("show"); };
-overlay.onclick = () => { sidebar.classList.remove("open"); overlay.classList.remove("show"); };
-function logout(){ localStorage.clear(); window.location.href = "/"; }
-
-async function saveProfile() {
-    const allergies = document.getElementById("allergies").value;
-    const conditions = document.getElementById("conditions").value;
-    const age = document.getElementById("age").value;
-    await fetch("http://127.0.0.1:8000/update-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-        body: JSON.stringify({ allergies, conditions, age: age ? parseInt(age) : null })
-    });
-    alert("Profile saved successfully.");
-}
-
-async function loadProfile() {
-    const res = await fetch("http://127.0.0.1:8000/profile", { headers: { "Authorization": "Bearer " + token }});
-    if (res.ok) {
-        const data = await res.json();
-        document.getElementById("allergies").value = data.allergies || "";
-        document.getElementById("conditions").value = data.conditions || "";
-        document.getElementById("age").value = data.age || "";
-    }
-}
-
-async function addMedication() {
-    const name = document.getElementById("name").value;
-    const dosage = document.getElementById("dosage").value;
-    const frequency = document.getElementById("frequency").value;
-    if (!name || !dosage) return;
-    await fetch("http://127.0.0.1:8000/add-medication", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-        body: JSON.stringify({ name, dosage, frequency })
-    });
-    document.getElementById("name").value = "";
-    document.getElementById("dosage").value = "";
-    document.getElementById("frequency").value = "";
-    loadMedications();
-}
-
-async function loadMedications() {
-    const res = await fetch("http://127.0.0.1:8000/medications", { headers: { "Authorization": "Bearer " + token }});
-    const data = await res.json();
-    const list = document.getElementById("medList");
-    list.innerHTML = data.medications.length === 0 ? "<p style='color:var(--text-muted); font-size: 14px;'>No medications logged.</p>" : "";
-    data.medications.forEach(med => {
-        list.innerHTML += `
-            <div class="med-item">
-                <div class="med-info">
-                    <strong>${med.name}</strong>
-                    <span>${med.dosage} • ${med.frequency}</span>
+        <div class="grid">
+            <!-- Health Profile Card -->
+            <section class="card">
+                <h2>
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Health Profile
+                </h2>
+                
+                <div class="form-group">
+                    <label>Known Allergies</label>
+                    <input id="allergies" type="text" placeholder="e.g. Penicillin, Peanuts">
                 </div>
-                <button class="delete-btn" onclick="deleteMedication('${med.name}')">Remove</button>
-            </div>`;
-    });
-}
+                
+                <div class="form-group">
+                    <label>Chronic Conditions</label>
+                    <input id="conditions" type="text" placeholder="e.g. Asthma, Diabetes">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input id="age" type="number" placeholder="Years">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button class="btn primary-btn" onclick="saveProfile()">Save Changes</button>
+                    </div>
+                </div>
+            </section>
 
-async function deleteMedication(name) {
-    await fetch(`http://127.0.0.1:8000/medication/${name}`, { method: "DELETE", headers: { "Authorization": "Bearer " + token }});
-    loadMedications();
-}
+            <!-- Medications Card -->
+            <section class="card">
+                <h2>
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    Active Medications
+                </h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label>Medicine Name</label>
+                        <input id="name" type="text" placeholder="Paracetamol">
+                    </div>
+                    <div class="form-group">
+                        <label>Dosage</label>
+                        <input id="dosage" type="text" placeholder="500mg">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Frequency</label>
+                    <input id="frequency" type="text" placeholder="Twice daily after food">
+                </div>
+                
+                <button class="btn primary-btn" onclick="addMedication()" style="margin-bottom: 30px;">+ Add Medication</button>
 
-loadProfile();
-loadMedications();
-</script>
+                <label>Currently Logging</label>
+                <div id="medList" class="med-list">
+                    <!-- Loaded via JS -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const token = localStorage.getItem("token");
+        if (!token || token === "null") { window.location.href = "/"; }
+
+        // Fetch user info for display
+        async function fetchUser() {
+            try {
+                const res = await fetch("/me", { headers: { "Authorization": "Bearer " + token }});
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById("userNameDisplay").textContent = data.username;
+                }
+            } catch {}
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "/";
+        }
+
+        document.getElementById("profileParentBtn").onclick = () => {
+            const submenu = document.getElementById("profileSubmenu");
+            const chevron = document.getElementById("profileChevron");
+            const isOpen = submenu.classList.toggle("open");
+            chevron.style.transform = isOpen ? "rotate(180deg)" : "rotate(0deg)";
+        };
+
+        document.getElementById("findDoctorBtn").onclick = () => {
+            if (!navigator.onLine) {
+                alert("Internet connection required to find nearby doctors.");
+                return;
+            }
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const query = encodeURIComponent("doctor hospital clinic");
+                    const url = `https://www.google.com/maps/search/${query}/@${lat},${lon},14z`;
+                    window.open(url, "_blank");
+                },
+                (error) => alert("Location permission required to find nearby doctors."),
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        };
+
+        async function saveProfile() {
+            const allergies = document.getElementById("allergies").value;
+            const conditions = document.getElementById("conditions").value;
+            const age = document.getElementById("age").value;
+            const res = await fetch("/update-profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+                body: JSON.stringify({ allergies, conditions, age: age ? parseInt(age) : null })
+            });
+            if (res.ok) alert("Health profile updated.");
+        }
+
+        async function loadProfile() {
+            const res = await fetch("/profile", { headers: { "Authorization": "Bearer " + token }});
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById("allergies").value = data.allergies || "";
+                document.getElementById("conditions").value = data.conditions || "";
+                document.getElementById("age").value = data.age || "";
+            }
+        }
+
+        async function addMedication() {
+            const name = document.getElementById("name").value;
+            const dosage = document.getElementById("dosage").value;
+            const frequency = document.getElementById("frequency").value;
+            if (!name || !dosage) return;
+            await fetch("/add-medication", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+                body: JSON.stringify({ name, dosage, frequency })
+            });
+            document.getElementById("name").value = "";
+            document.getElementById("dosage").value = "";
+            document.getElementById("frequency").value = "";
+            loadMedications();
+        }
+
+        async function loadMedications() {
+            const res = await fetch("/medications", { headers: { "Authorization": "Bearer " + token }});
+            const data = await res.json();
+            const list = document.getElementById("medList");
+            list.innerHTML = data.medications.length === 0 ? 
+                "<p style='color:var(--text-muted); font-size: 13px;'>No active medications logged.</p>" : "";
+            
+            data.medications.forEach(med => {
+                const item = document.createElement("div");
+                item.className = "med-item";
+                item.innerHTML = `
+                    <div>
+                        <span class="med-name">${med.name}</span>
+                        <span class="med-meta">${med.dosage} • ${med.frequency}</span>
+                    </div>
+                    <button class="remove-btn" onclick="deleteMedication('${med.name}')">Remove</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        async function deleteMedication(name) {
+            await fetch(`/medication/${name}`, { method: "DELETE", headers: { "Authorization": "Bearer " + token }});
+            loadMedications();
+        }
+
+        // Apply pop to all sidebar buttons
+        document.querySelectorAll(".sb-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const target = e.currentTarget;
+                target.classList.add("btn-pop");
+                setTimeout(() => target.classList.remove("btn-pop"), 300);
+            });
+        });
+
+        fetchUser();
+        loadProfile();
+        loadMedications();
+    </script>
 </body>
 </html>

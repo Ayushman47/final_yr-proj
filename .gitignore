@@ -18,5 +18,9 @@ __pycache__/
 *.pt
 *.bin
 chroma_db/
+dist/
+build/
+models/
+ollama_bin/
 
 *.db

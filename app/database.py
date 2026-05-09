@@ -1,13 +1,46 @@
 import sqlite3
-from datetime import datetime
+from contextlib import contextmanager
 
-DB_NAME = "medications.db"
+import os
+import sys
+
+# Ensure DB is in a writable location (the same folder as the .exe)
+if hasattr(sys, '_MEIPASS'):
+    # Running as bundled EXE
+    DB_PATH = os.path.join(os.path.dirname(sys.executable), "medications.db")
+else:
+    # Running as normal script
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "medications.db")
+
+DB_NAME = DB_PATH
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+@contextmanager
+def managed_connection():
+    """Context manager that guarantees the connection is closed even if an
+    exception is raised mid-route. Use this for new code; the bare
+    get_connection() is kept for backward compatibility with existing routes
+    that already manage their own close() calls."""
+    conn = get_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def get_db():
+    """FastAPI dependency that provides a database connection."""
+    conn = get_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def init_db():
@@ -20,10 +53,23 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Migrate existing databases
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN created_at TEXT")
+        cursor.execute("UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL")
+    except Exception:
+        pass
 
     # =========================
     # MEDICATIONS TABLE
@@ -31,11 +77,12 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS medications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            name TEXT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
             dosage TEXT,
             frequency TEXT,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
     """)
 
@@ -45,9 +92,10 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            created_at TEXT,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            user_id INTEGER NOT NULL,
+            title TEXT DEFAULT '',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
     """)
 
@@ -57,25 +105,39 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id INTEGER,
-            sender TEXT,
-            content TEXT,
-            timestamp TEXT,
-            FOREIGN KEY (conversation_id) REFERENCES conversations (id)
+            conversation_id INTEGER NOT NULL,
+            sender TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
         )
     """)
 
     # =========================
-    # HEALTH PROFILE TABLE (NEW - REQUIRED FOR ALLERGIES)
+    # HEALTH PROFILE TABLE
     # =========================
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS health_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER UNIQUE,
+            user_id INTEGER UNIQUE NOT NULL,
             allergies TEXT,
             conditions TEXT,
             age INTEGER,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # DOCUMENTS (PDF) TABLE
+    # =========================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            uploaded_by INTEGER NOT NULL,
+            chunk_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (uploaded_by) REFERENCES users (id)
         )
     """)
 
@@ -83,6 +145,5 @@ def init_db():
     conn.close()
 
 
-# Call init_db when this file is run
 if __name__ == "__main__":
     init_db()
