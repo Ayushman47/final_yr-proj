@@ -23,4 +23,6 @@ build/
 models/
 ollama_bin/
 
+*.exe
+*.spec
 *.db
