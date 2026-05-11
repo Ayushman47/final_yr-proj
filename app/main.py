@@ -82,17 +82,17 @@ templates = Jinja2Templates(directory=os.path.join(get_bundle_dir(), "app", "tem
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="login.html", context={"request": request})
 
 
 @app.get("/index", response_class=HTMLResponse)
 async def index_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html", context={"request": request})
 
 
 @app.get("/notes", response_class=HTMLResponse)
 async def notes_page(request: Request):
-    return templates.TemplateResponse("notes.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="notes.html", context={"request": request})
 
 
 # -------------------------

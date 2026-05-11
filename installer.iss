@@ -32,5 +32,6 @@ Filename: "{app}\HealthAssist.exe"; Description: "{cm:LaunchProgram,Health Assis
 
 [Dirs]
 ; Create models folder inside the app directory with full permissions so users can download models
+Name: "{app}"; Permissions: users-modify
 Name: "{app}\models"; Permissions: users-modify
 Name: "{app}\ollama_bin"; Permissions: users-modify
