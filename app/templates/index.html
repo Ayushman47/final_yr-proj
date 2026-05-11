@@ -593,6 +593,55 @@
     </div>
 </div>
 
+<!-- ══════════ SETUP WIZARD MODAL ══════════ -->
+<div id="setupWizardModal" class="overlay" style="z-index: 6000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.8);">
+    <div style="background: white; width: 90%; max-width: 600px; padding: 40px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); text-align: center;">
+        <h2 style="color: var(--primary-green); font-size: 1.8rem; margin-top: 0;">Choose Your AI Experience</h2>
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 30px;">Select the mode that best matches your computer's capabilities.</p>
+        
+        <div id="hardwareDetection" style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; text-align: left; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+            <div><strong>System RAM:</strong> <span id="detectedRam">Detecting...</span></div>
+            <div><strong>Recommended:</strong> <span id="recommendedTier" style="color: var(--primary-green); font-weight: bold;">Detecting...</span></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: left;">
+            <div onclick="selectSetupTier('Lite')" id="tierLite" style="border: 2px solid #e2e8f0; border-radius: 16px; padding: 20px; cursor: pointer; transition: 0.2s;">
+                <h3 style="margin: 0 0 10px 0; font-size: 1.1rem;">1. Lite Mode</h3>
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">Best for 4GB-8GB RAM</div>
+                <ul style="font-size: 12px; padding-left: 15px; color: #475569; margin: 0;">
+                    <li>Faster performance</li>
+                    <li>~2-3GB Storage</li>
+                    <li>Basic medical AI</li>
+                </ul>
+            </div>
+            
+            <div onclick="selectSetupTier('Balanced')" id="tierBalanced" style="border: 2px solid #e2e8f0; border-radius: 16px; padding: 20px; cursor: pointer; transition: 0.2s; position: relative;">
+                <div style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--primary-green); color: white; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 10px;">RECOMMENDED</div>
+                <h3 style="margin: 0 0 10px 0; font-size: 1.1rem;">2. Balanced</h3>
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">Best for 8GB-16GB RAM</div>
+                <ul style="font-size: 12px; padding-left: 15px; color: #475569; margin: 0;">
+                    <li>Better reasoning</li>
+                    <li>~5-7GB Storage</li>
+                    <li>Reranking enabled</li>
+                </ul>
+            </div>
+            
+            <div onclick="selectSetupTier('High Accuracy')" id="tierHigh" style="border: 2px solid #e2e8f0; border-radius: 16px; padding: 20px; cursor: pointer; transition: 0.2s;">
+                <h3 style="margin: 0 0 10px 0; font-size: 1.1rem;">3. High Accuracy</h3>
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">Best for 16GB+ RAM</div>
+                <ul style="font-size: 12px; padding-left: 15px; color: #475569; margin: 0;">
+                    <li>Best AI quality</li>
+                    <li>10GB+ Storage</li>
+                    <li>Advanced retrieval</li>
+                </ul>
+            </div>
+        </div>
+
+        <button onclick="finishSetup()" style="width: 100%; margin-top: 30px; padding: 15px; background: var(--primary-green); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer;">Continue to Models Setup</button>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 15px;">You can change your AI model anytime in Settings.</div>
+    </div>
+</div>
+
 <!-- ══════════ SCRIPT ══════════ -->
 <script>
 function showToast(message, type = 'success') {
@@ -1524,8 +1573,22 @@ async function init() {
             const mData = await mRes.json();
             hasActiveModel = !!mData.active;
             if (!hasActiveModel) {
-                document.getElementById("onboardingMsg").style.display = "block";
-                openModelsModal();
+                // Trigger the First Launch AI Setup System
+                document.getElementById("setupWizardModal").style.display = "flex";
+                
+                try {
+                    const infoRes = await fetch("/api/setup-info", { headers: { "Authorization": "Bearer " + token }});
+                    if (infoRes.ok) {
+                        const info = await infoRes.json();
+                        document.getElementById("detectedRam").innerText = info.ram_gb + " GB";
+                        document.getElementById("recommendedTier").innerText = info.recommended_tier;
+                        selectSetupTier(info.recommended_tier);
+                    } else {
+                        selectSetupTier('Balanced');
+                    }
+                } catch(e) {
+                    selectSetupTier('Balanced');
+                }
             }
         }
     } catch(e) {}
@@ -1555,6 +1618,26 @@ async function init() {
     
     // Check for updates on startup
     setTimeout(checkUpdate, 2000);
+}
+
+let selectedTier = 'Balanced';
+
+function selectSetupTier(tier) {
+    selectedTier = tier;
+    document.getElementById("tierLite").style.borderColor = tier === 'Lite' ? 'var(--primary-green)' : '#e2e8f0';
+    document.getElementById("tierBalanced").style.borderColor = tier === 'Balanced' ? 'var(--primary-green)' : '#e2e8f0';
+    document.getElementById("tierHigh").style.borderColor = tier === 'High Accuracy' ? 'var(--primary-green)' : '#e2e8f0';
+}
+
+function finishSetup() {
+    document.getElementById("setupWizardModal").style.display = "none";
+    
+    // Auto-download a model based on tier (or just open models modal and highlight it)
+    openModelsModal();
+    // Hint which model to download based on tier
+    let msg = document.getElementById("onboardingMsg");
+    msg.style.display = "block";
+    msg.innerText = `You selected ${selectedTier} Mode. Please download a recommended model for your tier to start.`;
 }
 
 init();

@@ -8,9 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.rag import ask_question_rag, ingest_pdf, delete_pdf
+from app.rag_service import ask_question_rag
+from app.retrieval_service import ingest_pdf_pymupdf as ingest_pdf, delete_pdf
 from app.nearby import is_doctor_search_intent, find_nearby_doctors
-from app.auth import router as auth_router, get_current_user, get_current_admin_user, User
+from app.auth import router as auth_router, get_current_user, get_current_admin_user, get_current_super_admin_user, User
 from app.database import init_db, get_db
 from app.updater import updater
 
@@ -44,7 +45,7 @@ async def startup_event():
     init_db()
     
     # Sync existing PDFs from ChromaDB to SQLite if they are missing
-    from app.rag import collection
+    from app.retrieval_service import collection
     from app.database import get_connection
     
     try:
@@ -269,6 +270,48 @@ def delete_document(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+# -------------------------
+# Super Admin Routes
+# -------------------------
+
+@app.get("/superadmin/users")
+async def sa_list_users(
+    sadmin: User = Depends(get_current_super_admin_user),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """View all users, including admin/super admin status."""
+    cursor = db.cursor()
+    cursor.execute("SELECT id, username, is_admin, is_super_admin, created_at FROM users")
+    return {"users": [dict(row) for row in cursor.fetchall()]}
+
+class RoleUpdateRequest(BaseModel):
+    is_admin: bool
+
+@app.post("/superadmin/users/{user_id}/role")
+async def sa_update_user_role(
+    user_id: int,
+    body: RoleUpdateRequest,
+    sadmin: User = Depends(get_current_super_admin_user),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Promote to admin or demote from admin."""
+    cursor = db.cursor()
+    
+    # Check if the target user is a super admin
+    cursor.execute("SELECT is_super_admin FROM users WHERE id = ?", (user_id,))
+    target_user = cursor.fetchone()
+    
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if target_user["is_super_admin"] and sadmin.id == user_id and not body.is_admin:
+        raise HTTPException(status_code=400, detail="Cannot demote yourself")
+    
+    cursor.execute("UPDATE users SET is_admin = ? WHERE id = ?", (int(body.is_admin), user_id))
+    db.commit()
+    
+    return {"message": "Role updated successfully"}
 
 
 # -------------------------
@@ -637,6 +680,14 @@ def api_delete_model(model_name: str, user: User = Depends(get_current_user)):
 def api_set_active_model(req: SelectModelRequest, user: User = Depends(get_current_user)):
     set_active_model(req.model)
     return {"message": "Active model updated", "active": req.model}
+
+@app.get("/api/setup-info")
+def api_setup_info(user: User = Depends(get_current_user)):
+    from app.model_profile_service import get_recommended_tier
+    import psutil
+    ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 1)
+    recommended = get_recommended_tier()
+    return {"ram_gb": ram_gb, "recommended_tier": recommended}
 
 # -------------------------
 # Update System

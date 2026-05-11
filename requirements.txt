@@ -3,7 +3,8 @@ uvicorn
 sentence-transformers
 chromadb
 torch
-PyPDF2
+PyMuPDF
+psutil
 requests
 python-multipart
 passlib[bcrypt]

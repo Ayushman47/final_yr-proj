@@ -146,6 +146,11 @@
         <input type="password" id="password" placeholder="••••••••">
     </div>
 
+    <div class="input-group" id="adminCodeGroup" style="display: none;">
+        <label>Admin Access Code (Optional)</label>
+        <input type="password" id="adminCode" placeholder="Secret code">
+    </div>
+
     <button onclick="submitForm(false)">Login</button>
     <button id="adminLoginBtn" style="background: white; color: var(--primary-green); border: 2px solid var(--primary-green); margin-top: 10px;" onclick="submitForm(true)">Login as Admin</button>
     <div class="error" id="errorMsg"></div>
@@ -163,6 +168,7 @@ function toggleMode() {
     document.getElementById("formTitle").innerText = isLogin ? "Welcome Back" : "Create Account";
     document.querySelector("button").innerText = isLogin ? "Login" : "Create Account";
     document.getElementById("adminLoginBtn").style.display = isLogin ? "block" : "none";
+    document.getElementById("adminCodeGroup").style.display = isLogin ? "none" : "block";
     document.getElementById("toggleArea").innerHTML =
         isLogin ? 'Don\'t have an account? <b onclick="toggleMode()">Sign up</b>' :
                   'Already have an account? <b onclick="toggleMode()">Login</b>';
@@ -180,6 +186,16 @@ async function submitForm(isAdminLogin) {
     }
 
     const endpoint = isLogin ? "login" : "signup";
+    const adminCode = document.getElementById("adminCode").value.trim();
+
+    const bodyData = {
+        username: username,
+        password: password
+    };
+
+    if (!isLogin && adminCode) {
+        bodyData.admin_code = adminCode;
+    }
 
     try {
         const response = await fetch(`/${endpoint}`, {
@@ -187,10 +203,7 @@ async function submitForm(isAdminLogin) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
+            body: JSON.stringify(bodyData)
         });
 
         const data = await response.json();

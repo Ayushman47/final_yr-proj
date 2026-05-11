@@ -30,10 +30,12 @@ class User(BaseModel):
     id: int
     username: str
     is_admin: bool
+    is_super_admin: bool = False
 
 class AuthRequest(BaseModel):
     username: str
     password: str
+    admin_code: str | None = None
 
 
 # ---------------- PASSWORD ----------------
@@ -68,11 +70,23 @@ def signup(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
         )
 
     try:
+        is_admin_flag = 0
+        if body.admin_code:
+            admin_signup_code = os.getenv("ADMIN_SIGNUP_CODE")
+            if not admin_signup_code or body.admin_code != admin_signup_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid admin code"
+                )
+            is_admin_flag = 1
+
         cursor.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
-            (body.username, hash_password(body.password))
+            "INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
+            (body.username, hash_password(body.password), is_admin_flag)
         )
         db.commit()
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(
@@ -127,7 +141,21 @@ def get_current_user(
         raise credentials_exception
 
     cursor = db.cursor()
-    cursor.execute("SELECT id, username, is_admin FROM users WHERE username = ?", (username,))
+    try:
+        cursor.execute("SELECT id, username, is_admin, is_super_admin FROM users WHERE username = ?", (username,))
+    except sqlite3.OperationalError:
+        # Fallback if migration hasn't run during this exact request
+        cursor.execute("SELECT id, username, is_admin FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        if row is None:
+            raise credentials_exception
+        return User(
+            id=row["id"],
+            username=row["username"],
+            is_admin=bool(row["is_admin"]),
+            is_super_admin=False
+        )
+
     row = cursor.fetchone()
     
     if row is None:
@@ -136,7 +164,8 @@ def get_current_user(
     return User(
         id=row["id"],
         username=row["username"],
-        is_admin=bool(row["is_admin"])
+        is_admin=bool(row["is_admin"]),
+        is_super_admin=bool(row.get("is_super_admin", 0))
     )
 
 
@@ -147,5 +176,13 @@ def get_current_admin_user(current_user: User = Depends(get_current_user)) -> Us
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
+        )
+    return current_user
+
+def get_current_super_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super Admin access required"
         )
     return current_user

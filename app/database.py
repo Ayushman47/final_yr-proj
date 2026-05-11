@@ -58,6 +58,7 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             is_admin BOOLEAN DEFAULT 0,
+            is_super_admin BOOLEAN DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -68,8 +69,21 @@ def init_db():
     except Exception:
         pass
     try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT 0")
+    except Exception:
+        pass
+    try:
         cursor.execute("ALTER TABLE users ADD COLUMN created_at TEXT")
         cursor.execute("UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL")
+    except Exception:
+        pass
+
+    # Automatically make the first existing admin a super admin
+    try:
+        cursor.execute("SELECT id FROM users WHERE is_admin = 1 AND is_super_admin = 0 ORDER BY id ASC LIMIT 1")
+        first_admin = cursor.fetchone()
+        if first_admin:
+            cursor.execute("UPDATE users SET is_super_admin = 1 WHERE id = ?", (first_admin["id"],))
     except Exception:
         pass
 
