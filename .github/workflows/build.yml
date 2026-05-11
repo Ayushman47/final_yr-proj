@@ -55,3 +55,11 @@ jobs:
         name: HealthAssist-Setup-EXE
         path: dist/HealthAssist_Setup.exe
         compression-level: 9
+
+    - name: Upload to GitHub Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: dist/HealthAssist_Setup.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

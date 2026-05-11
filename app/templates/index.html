@@ -547,6 +547,38 @@
     </div>
 </div>
 
+<!-- ══════════ UPDATE MODAL ══════════ -->
+<div id="updateModal" class="overlay" style="z-index: 5000; display: none; align-items: center; justify-content: center;">
+    <div style="background: white; width: 90%; max-width: 450px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+            <div style="width: 50px; height: 50px; background: #e8f5e9; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary-green);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </div>
+            <div>
+                <h3 style="margin: 0; color: var(--primary-green); font-size: 1.3rem;">Update Available!</h3>
+                <span id="updateVersionText" style="font-size: 13px; color: #64748b; font-weight: 600;">v1.0.0 &rarr; v1.0.1</span>
+            </div>
+        </div>
+        
+        <div id="updateReleaseNotes" style="font-size: 13px; color: #475569; background: #f8fafc; padding: 15px; border-radius: 10px; margin-bottom: 20px; max-height: 150px; overflow-y: auto; border: 1px solid #e2e8f0; white-space: pre-wrap;"></div>
+        
+        <div id="updateActions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <button onclick="document.getElementById('updateModal').style.display='none'" style="padding: 12px; background: #f1f5f9; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Later</button>
+            <button onclick="startUpdate()" style="padding: 12px; background: var(--primary-green); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px;">Update Now</button>
+        </div>
+        
+        <div id="updateProgressContainer" style="display: none; margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; font-weight: 600;">
+                <span id="updateStatusText" style="color: var(--primary-green);">Downloading update...</span>
+                <span id="updatePercent">0%</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                <div id="updateBar" style="width: 0%; height: 100%; background: var(--primary-green); transition: width 0.3s;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="main-wrapper">
     <div class="chat-container">
         <div id="chat"></div>
@@ -1408,6 +1440,80 @@ function closeModelsModal() {
     document.getElementById("modelsModal").style.display = "none";
 }
 
+// ── Auto Update System ──
+let updatePollInterval = null;
+
+async function checkUpdate() {
+    try {
+        const res = await fetch("/api/update/check", { headers: { "Authorization": "Bearer " + token }});
+        if (res.ok) {
+            const data = await res.json();
+            if (data.available && data.download_url) {
+                document.getElementById("updateVersionText").innerHTML = `${data.current_version} &rarr; <strong>${data.latest_version}</strong>`;
+                document.getElementById("updateReleaseNotes").innerText = data.release_notes || "Bug fixes and performance improvements.";
+                document.getElementById("updateModal").style.display = "flex";
+            }
+        }
+    } catch(e) {
+        console.log("Update check failed (offline?)");
+    }
+}
+
+async function startUpdate() {
+    document.getElementById("updateActions").style.display = "none";
+    document.getElementById("updateProgressContainer").style.display = "block";
+    document.getElementById("updateStatusText").innerText = "Starting download...";
+    
+    try {
+        const res = await fetch("/api/update/download", { 
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        
+        if (res.ok) {
+            updatePollInterval = setInterval(pollUpdateProgress, 1000);
+        } else {
+            document.getElementById("updateStatusText").innerText = "Failed to start download.";
+            document.getElementById("updateStatusText").style.color = "#ef4444";
+        }
+    } catch(e) {
+        document.getElementById("updateStatusText").innerText = "Network error.";
+    }
+}
+
+async function pollUpdateProgress() {
+    try {
+        const res = await fetch("/api/update/progress", { headers: { "Authorization": "Bearer " + token }});
+        if (res.ok) {
+            const data = await res.json();
+            
+            if (data.status === "error") {
+                clearInterval(updatePollInterval);
+                document.getElementById("updateStatusText").innerText = "Download failed.";
+                document.getElementById("updateStatusText").style.color = "#ef4444";
+                document.getElementById("updateBar").style.background = "#ef4444";
+                return;
+            }
+            
+            document.getElementById("updatePercent").innerText = data.progress + "%";
+            document.getElementById("updateBar").style.width = data.progress + "%";
+            document.getElementById("updateStatusText").innerText = "Downloading update...";
+            
+            if (data.status === "success" && data.progress === 100) {
+                clearInterval(updatePollInterval);
+                document.getElementById("updateStatusText").innerText = "Installing... App will restart.";
+                
+                // Trigger apply
+                setTimeout(() => {
+                    fetch("/api/update/apply", { method: "POST", headers: { "Authorization": "Bearer " + token }});
+                }, 1000);
+            }
+        }
+    } catch(e) {}
+}
+
+window.addEventListener('online', checkUpdate);
+
 // ── Init ──
 async function init() {
     checkAdmin();
@@ -1446,6 +1552,9 @@ async function init() {
         }
         loadConversationList();
     } catch (e) { console.error("Init error", e); }
+    
+    // Check for updates on startup
+    setTimeout(checkUpdate, 2000);
 }
 
 init();

@@ -12,6 +12,7 @@ from app.rag import ask_question_rag, ingest_pdf, delete_pdf
 from app.nearby import is_doctor_search_intent, find_nearby_doctors
 from app.auth import router as auth_router, get_current_user, get_current_admin_user, User
 from app.database import init_db, get_db
+from app.updater import updater
 
 
 def get_bundle_dir():
@@ -636,4 +637,43 @@ def api_delete_model(model_name: str, user: User = Depends(get_current_user)):
 def api_set_active_model(req: SelectModelRequest, user: User = Depends(get_current_user)):
     set_active_model(req.model)
     return {"message": "Active model updated", "active": req.model}
+
+# -------------------------
+# Update System
+# -------------------------
+
+@app.get("/api/update/check")
+async def check_update(user: User = Depends(get_current_user)):
+    """Check for available updates on GitHub."""
+    return updater.check_for_update()
+
+@app.post("/api/update/download")
+async def download_update(user: User = Depends(get_current_user)):
+    """Start downloading the latest update."""
+    if not updater.update_info or not updater.update_info.get("download_url"):
+        # Re-check if we don't have info
+        updater.check_for_update()
+    
+    if updater.update_info and updater.update_info.get("download_url"):
+        success = updater.start_download(updater.update_info["download_url"])
+        return {"success": success, "message": "Download started" if success else "Already downloading"}
+    
+    raise HTTPException(status_code=404, detail="No update available to download")
+
+@app.get("/api/update/progress")
+async def get_update_progress(user: User = Depends(get_current_user)):
+    """Get the current download progress."""
+    return {
+        "progress": updater.download_progress,
+        "is_downloading": updater.is_downloading,
+        "status": "error" if updater.download_progress == -1 else "success"
+    }
+
+@app.post("/api/update/apply")
+async def apply_update(user: User = Depends(get_current_user)):
+    """Execute the installer and restart the application."""
+    success = updater.apply_update()
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to launch update installer")
+    return {"message": "Update started"}
 
