@@ -13,7 +13,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Ensure ChromaDB is in a writable location
 if hasattr(sys, '_MEIPASS'):
     # Running as bundled EXE
-    chroma_path = os.path.join(os.path.dirname(sys.executable), "chroma_db")
+    app_data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "HealthAssist")
+    os.makedirs(app_data_dir, exist_ok=True)
+    chroma_path = os.path.join(app_data_dir, "chroma_db")
 else:
     # Running as normal script
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

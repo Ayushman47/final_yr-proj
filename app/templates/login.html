@@ -215,7 +215,7 @@ async function submitForm(isAdminLogin) {
                 }
             }
             
-            window.location.href = "/index";
+            window.location.replace(window.location.origin + "/index");
         } else {
             alert("Account created! Now login.");
             toggleMode();

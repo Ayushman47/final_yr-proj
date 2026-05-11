@@ -277,7 +277,7 @@
         </div>
         
         <nav class="sb-nav">
-            <button onclick="window.location.href='/index'" class="sb-btn">
+            <button onclick="window.location.replace(window.location.origin + '/index')" class="sb-btn">
                 <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 Back to Chat
             </button>
@@ -380,7 +380,11 @@
 
     <script>
         const token = localStorage.getItem("token");
-        if (!token || token === "null") { window.location.href = "/"; }
+        if (!token) window.location.replace(window.location.origin + "/");
+
+        function goBack() {
+            window.location.replace(window.location.origin + "/index");
+        }
 
         // Fetch user info for display
         async function fetchUser() {
@@ -395,7 +399,7 @@
 
         function logout() {
             localStorage.clear();
-            window.location.href = "/";
+            window.location.replace(window.location.origin + "/");
         }
 
         document.getElementById("profileParentBtn").onclick = () => {

@@ -4,10 +4,12 @@ from contextlib import contextmanager
 import os
 import sys
 
-# Ensure DB is in a writable location (the same folder as the .exe)
+# Ensure DB is in a writable location
 if hasattr(sys, '_MEIPASS'):
     # Running as bundled EXE
-    DB_PATH = os.path.join(os.path.dirname(sys.executable), "medications.db")
+    app_data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "HealthAssist")
+    os.makedirs(app_data_dir, exist_ok=True)
+    DB_PATH = os.path.join(app_data_dir, "medications.db")
 else:
     # Running as normal script
     DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "medications.db")

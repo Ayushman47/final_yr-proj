@@ -580,7 +580,7 @@ function showToast(message, type = 'success') {
 }
 
 const token = localStorage.getItem("token");
-if (!token) window.location.href = "/";
+if (!token) window.location.replace(window.location.origin + "/");
 
 let currentConversationId = null;
 
@@ -606,7 +606,7 @@ function closeSidebar() {
 // ── Bottom buttons ──
 document.getElementById("logoutBtn").onclick = () => {
     localStorage.removeItem("token");
-    window.location.href = "/";
+    window.location.replace(window.location.origin + "/");
 };
 document.getElementById("profileParentBtn").onclick = () => {
     const submenu = document.getElementById("profileSubmenu");
@@ -615,10 +615,10 @@ document.getElementById("profileParentBtn").onclick = () => {
     chevron.style.transform = isOpen ? "rotate(180deg)" : "rotate(0deg)";
 };
 document.getElementById("profileBtn").onclick = () => {
-    window.location.href = "/notes";
+    window.location.replace(window.location.origin + "/notes");
 };
 document.getElementById("medBtn").onclick = () => {
-    window.location.href = "/notes";
+    window.location.replace(window.location.origin + "/notes");
 };
 document.getElementById("modelsBtn").onclick = () => {
     openModelsModal();
