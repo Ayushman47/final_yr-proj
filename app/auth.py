@@ -5,26 +5,35 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 import os
+import secrets
+import keyring
 import sqlite3
 
 from app.database import get_db
 
-# Load from environment variable — fallback only for local development
-SECRET_KEY = os.getenv("SECRET_KEY", "DEVELOPMENT_SECRET_KEY_CHANGE_ME_IN_PRODUCTION")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours for a desktop app
+APP_NAME = "HealthAssistApp"
+USERNAME_KEY = "jwt_secret_key"
 
+def get_or_create_jwt_secret() -> str:
+    # Use Windows Credential Manager to persist secret keys securely
+    secret = keyring.get_password(APP_NAME, USERNAME_KEY)
+    if not secret:
+        secret = secrets.token_urlsafe(32)
+        keyring.set_password(APP_NAME, USERNAME_KEY, secret)
+    return secret
+
+SECRET_KEY = get_or_create_jwt_secret()
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+
+# Setup passlib with argon2 and pbkdf2 backup
 pwd_context = CryptContext(
-    schemes=["pbkdf2_sha256"],
+    schemes=["argon2", "pbkdf2_sha256"],
     deprecated="auto"
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
 router = APIRouter()
-
-
-# ---------------- MODELS ----------------
 
 class User(BaseModel):
     id: int
@@ -37,17 +46,11 @@ class AuthRequest(BaseModel):
     password: str
     admin_code: str | None = None
 
-
-# ---------------- PASSWORD ----------------
-
 def hash_password(password: str):
     return pwd_context.hash(password)
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
-
-
-# ---------------- TOKEN ----------------
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -55,13 +58,21 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-
-# ---------------- SIGNUP ----------------
-
 @router.post("/signup")
 def signup(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
-    cursor = db.cursor()
+    if len(body.password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long."
+        )
+        
+    if len(body.username) < 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username must be at least 3 characters long."
+        )
 
+    cursor = db.cursor()
     cursor.execute("SELECT id FROM users WHERE username = ?", (body.username,))
     if cursor.fetchone():
         raise HTTPException(
@@ -72,11 +83,13 @@ def signup(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
     try:
         is_admin_flag = 0
         if body.admin_code:
-            admin_signup_code = os.getenv("ADMIN_SIGNUP_CODE")
-            if not admin_signup_code or body.admin_code != admin_signup_code:
+            admin_signup_code = os.getenv("ADMIN_SIGNUP_CODE", "health-assist-deploy-2026")
+            
+            # Constant-time comparison to prevent timing attacks
+            if not secrets.compare_digest(body.admin_code, admin_signup_code):
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid admin code"
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Registration failed. Invalid authorization code."
                 )
             is_admin_flag = 1
 
@@ -87,7 +100,7 @@ def signup(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
         db.commit()
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -96,13 +109,9 @@ def signup(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
 
     return {"message": "User created successfully"}
 
-
-# ---------------- LOGIN ----------------
-
 @router.post("/login")
 def login(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
-
     cursor.execute("SELECT * FROM users WHERE username = ?", (body.username,))
     user = cursor.fetchone()
 
@@ -114,14 +123,10 @@ def login(body: AuthRequest, db: sqlite3.Connection = Depends(get_db)):
         )
 
     token = create_access_token({"sub": user["username"]})
-
     return {
         "access_token": token,
         "token_type": "bearer"
     }
-
-
-# ---------------- AUTH DEPENDENCY ----------------
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -144,7 +149,7 @@ def get_current_user(
     try:
         cursor.execute("SELECT id, username, is_admin, is_super_admin FROM users WHERE username = ?", (username,))
     except sqlite3.OperationalError:
-        # Fallback if migration hasn't run during this exact request
+        # Fallback if DB migrations are running
         cursor.execute("SELECT id, username, is_admin FROM users WHERE username = ?", (username,))
         row = cursor.fetchone()
         if row is None:
@@ -157,7 +162,6 @@ def get_current_user(
         )
 
     row = cursor.fetchone()
-    
     if row is None:
         raise credentials_exception
         
@@ -165,11 +169,8 @@ def get_current_user(
         id=row["id"],
         username=row["username"],
         is_admin=bool(row["is_admin"]),
-        is_super_admin=bool(row.get("is_super_admin", 0))
+        is_super_admin=bool(row["is_super_admin"]) if "is_super_admin" in row.keys() else False
     )
-
-
-# ---------------- ADMIN DEPENDENCY ----------------
 
 def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:

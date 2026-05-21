@@ -1,0 +1,177 @@
+/* ══════════════════════ SETTINGS HUB ══════════════════════ */
+.settings-modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: white;
+    z-index: 2000;
+    display: none;
+    flex-direction: row;
+    animation: settingsFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes settingsFadeIn {
+    from { opacity: 0; transform: scale(1.02); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.settings-sidebar {
+    width: 280px;
+    background: #f8fafc;
+    border-right: 1px solid rgba(0,0,0,0.05);
+    padding: 32px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.settings-tab {
+    padding: 12px 16px;
+    cursor: pointer;
+    color: #64748b;
+    font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.settings-tab:hover {
+    background: #f1f5f9;
+    color: var(--primary-green);
+}
+
+.settings-tab.active {
+    background: #e8f5e9;
+    color: var(--primary-green);
+    font-weight: 700;
+}
+
+.settings-content {
+    flex: 1;
+    padding: 48px;
+    overflow-y: auto;
+    background: #ffffff;
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.settings-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #0f172a;
+}
+
+.close-settings {
+    background: #f1f5f9;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.close-settings:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    transform: rotate(90deg);
+}
+
+/* Model Cards Refinement */
+.model-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.model-card:hover {
+    border-color: var(--primary-green);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    transform: translateY(-2px);
+}
+
+/* ── Tier Selection Cards ── */
+.tier-card {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tier-card:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-3px);
+}
+
+.tier-card.active {
+    background: #e8f5e9;
+    border-color: var(--primary-green);
+    box-shadow: 0 12px 24px rgba(46,125,50,0.1);
+}
+
+.tier-card.active div:first-child { transform: scale(1.2); transition: 0.3s; }
+
+.spec-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.spec-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #94a3b8;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+}
+
+.spec-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Interactive Pop Effect ── */
+.settings-tab, 
+.tier-card,
+#tierDownloadBtn,
+.close-settings {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.settings-tab:active, 
+.tier-card:active,
+#tierDownloadBtn:active,
+.close-settings:active {
+    transform: scale(0.92) !important;
+}

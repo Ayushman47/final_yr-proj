@@ -37,7 +37,7 @@ def get_tier_settings(tier: str) -> dict:
         }
     elif tier == ModelTier.HIGH:
         return {
-            "embedding_model": "BAAI/bge-small-en-v1.5",
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
             "rerank": True,
             "top_k": 6,
             "max_history": 20,
@@ -47,7 +47,7 @@ def get_tier_settings(tier: str) -> dict:
         }
     else: # Balanced
         return {
-            "embedding_model": "BAAI/bge-small-en-v1.5",
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
             "rerank": True,
             "top_k": 4,
             "max_history": 10,

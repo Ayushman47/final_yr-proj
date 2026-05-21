@@ -26,3 +26,6 @@ ollama_bin/
 *.exe
 *.spec
 *.db
+*.docx
+~$*
+

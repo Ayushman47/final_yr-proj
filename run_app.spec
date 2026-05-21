@@ -1,12 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-# We bundle 'app/templates' and 'ollama_bin'.
+# We bundle 'app/templates', 'app/static', and 'ollama_bin'.
 # We explicitly DO NOT bundle 'models' to keep the EXE small and 
 # allow users to download models through the app UI dynamically.
-datas = [('app/templates', 'app/templates'), ('ollama_bin', 'ollama_bin')]
+datas = [('app/templates', 'app/templates'), ('app/static', 'app/static'), ('ollama_bin', 'ollama_bin')]
 binaries = []
-hiddenimports = ['passlib.handlers.pbkdf2', 'bcrypt', 'clr', 'sentence_transformers']
+hiddenimports = ['passlib.handlers.pbkdf2', 'bcrypt', 'clr', 'sentence_transformers', 'keyring.backends.Windows']
 
 # Collect heavy libraries
 tmp_ret = collect_all('chromadb')
@@ -23,6 +23,11 @@ tmp_ret = collect_all('uvicorn')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('webview')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('keyring')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('magic')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
 
 a = Analysis(
     ['run_app.py'],

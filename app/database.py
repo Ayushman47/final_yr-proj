@@ -1,6 +1,5 @@
 import sqlite3
 from contextlib import contextmanager
-
 import os
 import sys
 
@@ -16,42 +15,33 @@ else:
 
 DB_NAME = DB_PATH
 
-
 def get_connection():
-    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False, timeout=10.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA foreign_keys=ON;")
     return conn
-
 
 @contextmanager
 def managed_connection():
-    """Context manager that guarantees the connection is closed even if an
-    exception is raised mid-route. Use this for new code; the bare
-    get_connection() is kept for backward compatibility with existing routes
-    that already manage their own close() calls."""
     conn = get_connection()
     try:
         yield conn
     finally:
         conn.close()
-
 
 def get_db():
-    """FastAPI dependency that provides a database connection."""
     conn = get_connection()
     try:
         yield conn
     finally:
         conn.close()
-
 
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # =========================
-    # USERS TABLE
-    # =========================
+    # Users Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +53,7 @@ def init_db():
         )
     """)
 
-    # Migrate existing databases
+    # Migration for older db versions
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0")
     except Exception:
@@ -78,7 +68,7 @@ def init_db():
     except Exception:
         pass
 
-    # Automatically make the first existing admin a super admin
+    # Promote first admin to super admin if not done
     try:
         cursor.execute("SELECT id FROM users WHERE is_admin = 1 AND is_super_admin = 0 ORDER BY id ASC LIMIT 1")
         first_admin = cursor.fetchone()
@@ -87,9 +77,7 @@ def init_db():
     except Exception:
         pass
 
-    # =========================
-    # MEDICATIONS TABLE
-    # =========================
+    # Medications Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS medications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,9 +90,7 @@ def init_db():
         )
     """)
 
-    # =========================
-    # CONVERSATIONS TABLE
-    # =========================
+    # Conversations Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,9 +101,7 @@ def init_db():
         )
     """)
 
-    # =========================
-    # MESSAGES TABLE
-    # =========================
+    # Messages Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,9 +113,7 @@ def init_db():
         )
     """)
 
-    # =========================
-    # HEALTH PROFILE TABLE
-    # =========================
+    # Health Profile Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS health_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,9 +125,7 @@ def init_db():
         )
     """)
 
-    # =========================
-    # DOCUMENTS (PDF) TABLE
-    # =========================
+    # Documents Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,7 +139,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
 
 if __name__ == "__main__":
     init_db()

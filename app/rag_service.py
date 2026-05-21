@@ -4,7 +4,6 @@ from app.model_profile_service import get_tier_for_model, get_tier_settings
 from app.prompt_service import build_system_prompt, build_general_prompt
 from app.retrieval_service import retrieve_and_rerank
 
-# Keep same intents logic
 SYMPTOM_KEYWORDS = [
     "fever", "pain", "headache", "cough", "cold",
     "nausea", "vomit", "diarrhea", "rash", "itch",
@@ -46,7 +45,6 @@ def is_greeting(text: str) -> bool:
     stripped = re.sub(r"[^\w\s]", "", text.lower()).strip()
     return stripped in GREETING_WORDS
 
-
 def _call_ollama(messages: list[dict], tier_settings: dict) -> str:
     try:
         from app.model_manager import get_active_model
@@ -69,29 +67,26 @@ def _call_ollama(messages: list[dict], tier_settings: dict) -> str:
             timeout=90,
         )
         data = resp.json()
-        if "error" in data:
-            return "Server error. Please try again."
-        if "message" not in data:
+        if "error" in data or "message" not in data:
             return "Server error. Please try again."
         return data["message"]["content"]
     except requests.exceptions.ConnectionError:
         return "Service unavailable. Please ensure Ollama is running on port 11434."
     except requests.exceptions.Timeout:
         return "Request timed out. Please try again."
-    except Exception as exc:
+    except Exception:
         return "Server error. Please try again."
 
 def ask_question_rag(question: str, conversation_id: int, chat_history: list[dict] | None = None) -> str:
     if chat_history is None:
         chat_history = []
 
-    # Get active model and determine tier
     from app.model_manager import get_active_model
     active_model = get_active_model()
     tier = get_tier_for_model(active_model) if active_model else "Balanced"
     tier_settings = get_tier_settings(tier)
 
-    # Extract preamble
+    # Split medical profile context if present
     profile_context = ""
     clean_question = question
     if "User Question:" in question:
@@ -103,7 +98,7 @@ def ask_question_rag(question: str, conversation_id: int, chat_history: list[dic
         profile_context = question[:idx].strip()
         clean_question = question[idx + len("user question:"):].strip()
 
-    # Build history
+    # Get conversation history
     max_history = tier_settings["max_history"]
     tail = chat_history[-max_history:] if chat_history else []
     history_messages = [{"role": "user" if m.get("sender") == "user" else "assistant", "content": m["content"]} for m in tail]
@@ -129,14 +124,13 @@ def ask_question_rag(question: str, conversation_id: int, chat_history: list[dic
                 break
 
         context, metas, confidence = retrieve_and_rerank(rag_query, tier)
-        
         system_prompt = build_system_prompt(tier, profile_context, context)
         
         ollama_messages = [{"role": "system", "content": system_prompt}] + history_messages + [{"role": "user", "content": clean_question}]
         response = _call_ollama(ollama_messages, tier_settings)
         
-        # Warnings and citations
-        if confidence < 0.2 and context: # Reranker score is very low
+        # Add warning for low confidence matches
+        if confidence < 0.2 and context:
             response = "⚠️ I am not very confident in this response as my medical references are weak. Please consult a doctor.\n\n" + response
             
         if is_emergency(clean_question):
@@ -144,6 +138,7 @@ def ask_question_rag(question: str, conversation_id: int, chat_history: list[dic
             if not response.strip().startswith("⚠️"):
                 response = warning + response
 
+        # Add reference sources
         seen_sources = set()
         citations = []
         for m in metas:
@@ -160,7 +155,7 @@ def ask_question_rag(question: str, conversation_id: int, chat_history: list[dic
             
         return response
 
-    # General chat
+    # Handle general queries
     system_prompt = build_general_prompt(tier, profile_context)
     ollama_messages = [{"role": "system", "content": system_prompt}] + history_messages + [{"role": "user", "content": clean_question}]
     return _call_ollama(ollama_messages, tier_settings)

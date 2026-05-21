@@ -6,6 +6,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, 
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.rag_service import ask_question_rag
@@ -15,36 +16,30 @@ from app.auth import router as auth_router, get_current_user, get_current_admin_
 from app.database import init_db, get_db
 from app.updater import updater
 
-
 def get_bundle_dir():
     if hasattr(sys, '_MEIPASS'):
         return sys._MEIPASS
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
-# -------------------------
-# Initialize DB
-# -------------------------
 app = FastAPI(title="Health Assist API", version="2.0.0")
 app.include_router(auth_router)
 
-# Restrict CORS to local development or specified origins
+# Mount static files folder
+app.mount("/static", StaticFiles(directory=os.path.join(get_bundle_dir(), "app", "static")), name="static")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, this should be specific origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "PUT"],
     allow_headers=["*"],
 )
 
-# -------------------------
-# Initialize DB & Sync
-# -------------------------
 @app.on_event("startup")
 async def startup_event():
     init_db()
     
-    # Sync existing PDFs from ChromaDB to SQLite if they are missing
+    # Sync database documents with vector store on start
     from app.retrieval_service import collection
     from app.database import get_connection
     
@@ -59,7 +54,6 @@ async def startup_event():
         if sources:
             conn = get_connection()
             cursor = conn.cursor()
-            # Get admin user ID (first admin)
             cursor.execute("SELECT id FROM users WHERE is_admin = 1 LIMIT 1")
             admin = cursor.fetchone()
             admin_id = admin["id"] if admin else 1
@@ -67,7 +61,6 @@ async def startup_event():
             for src in sources:
                 cursor.execute("SELECT id FROM documents WHERE filename = ?", (src,))
                 if not cursor.fetchone():
-                    # Count chunks for this source
                     count = sum(1 for m in metas if m.get("source") == src)
                     cursor.execute("""
                         INSERT INTO documents (filename, uploaded_by, chunk_count)
@@ -78,61 +71,43 @@ async def startup_event():
     except Exception as e:
         print(f"Startup sync error: {e}")
 
-
 templates = Jinja2Templates(directory=os.path.join(get_bundle_dir(), "app", "templates"))
-
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse(request=request, name="login.html", context={"request": request})
 
-
 @app.get("/index", response_class=HTMLResponse)
 async def index_page(request: Request):
     return templates.TemplateResponse(request=request, name="index.html", context={"request": request})
-
 
 @app.get("/notes", response_class=HTMLResponse)
 async def notes_page(request: Request):
     return templates.TemplateResponse(request=request, name="notes.html", context={"request": request})
 
-
-# -------------------------
-# Models
-# -------------------------
 class QuestionRequest(BaseModel):
     question: str
     conversation_id: int
     lat: float | None = None
     lon: float | None = None
 
-
 class Medication(BaseModel):
     name: str
     dosage: str
     frequency: str
-
 
 class HealthProfile(BaseModel):
     allergies: str = ""
     conditions: str = ""
     age: int | None = None
 
-
 class DoctorSearchRequest(BaseModel):
     lat: float
     lon: float
 
-
 @app.get("/me")
 def get_me(user: User = Depends(get_current_user)):
-    """Returns basic user info, including admin status."""
     return {"id": user.id, "username": user.username, "is_admin": user.is_admin}
-
-
-# -------------------------
-# Admin Features
-# -------------------------
 
 @app.post("/admin/upload-pdf")
 async def upload_pdf(
@@ -140,25 +115,28 @@ async def upload_pdf(
     admin: User = Depends(get_current_admin_user),
     db: sqlite3.Connection = Depends(get_db)
 ):
-    """Secure endpoint for admins to ingest medical reference PDFs."""
-    # Security: File validation
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
     content = await file.read()
     
-    # Check file size (max 10MB)
+    # Check max file size (10MB)
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
 
-    # Basic PDF magic number check
-    if not content.startswith(b"%PDF-"):
-        raise HTTPException(status_code=400, detail="Invalid PDF file format")
+    # Strict MIME type check using magic bytes
+    import magic
+    try:
+        mime_type = magic.from_buffer(content, mime=True)
+        if mime_type != "application/pdf":
+            raise HTTPException(status_code=415, detail="Invalid file format. Only genuine PDF files are allowed.")
+    except Exception:
+        if not content.startswith(b"%PDF-"):
+            raise HTTPException(status_code=415, detail="Invalid PDF signature")
 
     try:
         chunk_count = ingest_pdf(content, file.filename)
         
-        # Record in database
         cursor = db.cursor()
         cursor.execute("""
             INSERT INTO documents (filename, uploaded_by, chunk_count)
@@ -170,11 +148,6 @@ async def upload_pdf(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# -------------------------
-# Admin Routes
-# -------------------------
 
 @app.get("/admin/stats")
 async def get_admin_stats(
@@ -188,7 +161,6 @@ async def get_admin_stats(
     cursor.execute("SELECT COUNT(*) as count, SUM(chunk_count) as chunks FROM documents")
     doc_data = cursor.fetchone()
     
-    # Simple storage estimate
     from app.database import DB_PATH
     storage_mb = os.path.getsize(DB_PATH) / (1024 * 1024)
     
@@ -211,7 +183,7 @@ async def list_users(
 @app.post("/admin/users/{user_id}/reset-password")
 async def reset_password(
     user_id: int,
-    body: dict, # {"new_password": "..."}
+    body: dict,
     admin: User = Depends(get_current_admin_user),
     db: sqlite3.Connection = Depends(get_db)
 ):
@@ -230,7 +202,6 @@ async def list_documents(
     admin: User = Depends(get_current_admin_user),
     db: sqlite3.Connection = Depends(get_db)
 ):
-    """List all uploaded PDF documents."""
     cursor = db.cursor()
     cursor.execute("""
         SELECT d.id, d.filename, d.chunk_count, d.created_at, u.username as uploader
@@ -241,17 +212,13 @@ async def list_documents(
     rows = cursor.fetchall()
     return {"documents": [dict(row) for row in rows]}
 
-
 @app.delete("/admin/documents/{doc_id}")
 def delete_document(
     doc_id: int,
     admin: User = Depends(get_current_admin_user),
     db: sqlite3.Connection = Depends(get_db)
 ):
-    """Delete a document from both SQLite and ChromaDB."""
     cursor = db.cursor()
-    
-    # Get filename first
     cursor.execute("SELECT filename FROM documents WHERE id = ?", (doc_id,))
     row = cursor.fetchone()
     if not row:
@@ -260,10 +227,7 @@ def delete_document(
     filename = row["filename"]
     
     try:
-        # Delete from ChromaDB
         delete_pdf(filename)
-        
-        # Delete from SQLite
         cursor.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
         db.commit()
         return {"message": f"Deleted {filename}"}
@@ -271,16 +235,11 @@ def delete_document(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-# -------------------------
-# Super Admin Routes
-# -------------------------
-
 @app.get("/superadmin/users")
 async def sa_list_users(
     sadmin: User = Depends(get_current_super_admin_user),
     db: sqlite3.Connection = Depends(get_db)
 ):
-    """View all users, including admin/super admin status."""
     cursor = db.cursor()
     cursor.execute("SELECT id, username, is_admin, is_super_admin, created_at FROM users")
     return {"users": [dict(row) for row in cursor.fetchall()]}
@@ -295,10 +254,7 @@ async def sa_update_user_role(
     sadmin: User = Depends(get_current_super_admin_user),
     db: sqlite3.Connection = Depends(get_db)
 ):
-    """Promote to admin or demote from admin."""
     cursor = db.cursor()
-    
-    # Check if the target user is a super admin
     cursor.execute("SELECT is_super_admin FROM users WHERE id = ?", (user_id,))
     target_user = cursor.fetchone()
     
@@ -310,13 +266,7 @@ async def sa_update_user_role(
     
     cursor.execute("UPDATE users SET is_admin = ? WHERE id = ?", (int(body.is_admin), user_id))
     db.commit()
-    
     return {"message": "Role updated successfully"}
-
-
-# -------------------------
-# Conversations
-# -------------------------
 
 @app.post("/conversations")
 def create_conversation(
@@ -336,7 +286,6 @@ def create_conversation(
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not create conversation")
 
-
 @app.get("/conversations")
 def list_conversations(
     user: User = Depends(get_current_user),
@@ -352,7 +301,6 @@ def list_conversations(
     rows = cursor.fetchall()
     return {"conversations": [dict(r) for r in rows]}
 
-
 @app.delete("/conversations/{conversation_id}")
 def delete_conversation(
     conversation_id: int,
@@ -360,27 +308,19 @@ def delete_conversation(
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
-    
-    # Ownership check
     cursor.execute("SELECT id FROM conversations WHERE id = ? AND user_id = ?", (conversation_id, user.id))
     if not cursor.fetchone():
         raise HTTPException(status_code=403, detail="Not authorized to delete this conversation")
 
     try:
-        # Cascading deletes are handled by SQLite foreign keys (if configured)
-        # or we do them manually for safety.
         cursor.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
         cursor.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
         db.commit()
         return {"message": "Conversation deleted"}
-    except Exception:
+    except Exception as e:
         db.rollback()
+        print(f"Error deleting conversation {conversation_id}: {e}")
         raise HTTPException(status_code=500, detail="Could not delete conversation")
-
-
-# -------------------------
-# Ask
-# -------------------------
 
 @app.post("/ask")
 def ask_question(
@@ -389,13 +329,10 @@ def ask_question(
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
-
-    # Ownership check
     cursor.execute("SELECT id FROM conversations WHERE id = ? AND user_id = ?", (request.conversation_id, user.id))
     if not cursor.fetchone():
         raise HTTPException(status_code=403, detail="Unauthorized access to this conversation")
 
-    # Sanitize input (basic)
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty")
@@ -435,13 +372,12 @@ Age: {profile['age']}
             ORDER BY id ASC
         """, (request.conversation_id,))
         rows = cursor.fetchall()
-        # Exclude the current message we just added
         history = [dict(r) for r in rows[:-1]]
 
         enhanced_question = profile_context + "\nUser Question:\n" + question
         answer = ask_question_rag(enhanced_question, request.conversation_id, history)
 
-    # Update conversation title if it's the first message
+    # Update title on first interaction
     cursor.execute("SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?", (request.conversation_id,))
     msg_count = cursor.fetchone()["count"]
     if msg_count <= 2:
@@ -461,11 +397,6 @@ Age: {profile['age']}
     db.commit()
     return {"answer": answer, "type": "chat"}
 
-
-# -------------------------
-# Messages
-# -------------------------
-
 @app.get("/messages/{conversation_id}")
 def get_messages(
     conversation_id: int,
@@ -473,8 +404,6 @@ def get_messages(
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
-
-    # Ownership check
     cursor.execute("SELECT id FROM conversations WHERE id = ? AND user_id = ?", (conversation_id, user.id))
     if not cursor.fetchone():
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -488,11 +417,6 @@ def get_messages(
 
     messages = [dict(row) for row in cursor.fetchall()]
     return {"messages": messages}
-
-
-# -------------------------
-# Medications
-# -------------------------
 
 @app.post("/add-medication")
 def add_medication(
@@ -512,7 +436,6 @@ def add_medication(
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not add medication")
 
-
 @app.get("/medications")
 def get_medications(
     user: User = Depends(get_current_user),
@@ -527,7 +450,6 @@ def get_medications(
     meds = [dict(row) for row in cursor.fetchall()]
     return {"medications": meds}
 
-
 @app.delete("/medication/{name}")
 def delete_medication(
     name: str,
@@ -535,7 +457,6 @@ def delete_medication(
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
-    # Check if exists and belongs to user
     cursor.execute("SELECT id FROM medications WHERE user_id = ? AND name = ?", (user.id, name))
     if not cursor.fetchone():
         raise HTTPException(status_code=404, detail="Medication not found")
@@ -548,11 +469,6 @@ def delete_medication(
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not remove medication")
 
-
-# -------------------------
-# Health Profile
-# -------------------------
-
 @app.post("/update-profile")
 def update_profile(
     profile: HealthProfile,
@@ -560,7 +476,6 @@ def update_profile(
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
-
     cursor.execute("SELECT id FROM health_profiles WHERE user_id = ?", (user.id,))
     existing = cursor.fetchone()
 
@@ -582,7 +497,6 @@ def update_profile(
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not update profile")
 
-
 @app.get("/profile")
 def get_profile(
     user: User = Depends(get_current_user),
@@ -600,18 +514,11 @@ def get_profile(
         return dict(profile)
     return {"allergies": "", "conditions": "", "age": None}
 
-
-# -------------------------
-# Doctor Finder
-# -------------------------
-
 @app.post("/find-doctors")
 def find_doctors(
     request: DoctorSearchRequest,
     user: User = Depends(get_current_user)
 ):
-    # This feature relies on external API (Nominatim), so it's less critical for ownership
-    # but still protected by auth.
     results = find_nearby_doctors(request.lat, request.lon, "doctor hospital clinic")
 
     if not results:
@@ -633,9 +540,6 @@ def find_doctors(
 
     return {"type": "doctor_results", "results": normalized[:5]}
 
-# -------------------------
-# Models Management
-# -------------------------
 from app.model_manager import (
     get_installed_models, delete_model, get_active_model, set_active_model,
     start_pull_model, get_pull_progress, cancel_pull_model
@@ -689,20 +593,13 @@ def api_setup_info(user: User = Depends(get_current_user)):
     recommended = get_recommended_tier()
     return {"ram_gb": ram_gb, "recommended_tier": recommended}
 
-# -------------------------
-# Update System
-# -------------------------
-
 @app.get("/api/update/check")
 async def check_update(user: User = Depends(get_current_user)):
-    """Check for available updates on GitHub."""
     return updater.check_for_update()
 
 @app.post("/api/update/download")
 async def download_update(user: User = Depends(get_current_user)):
-    """Start downloading the latest update."""
     if not updater.update_info or not updater.update_info.get("download_url"):
-        # Re-check if we don't have info
         updater.check_for_update()
     
     if updater.update_info and updater.update_info.get("download_url"):
@@ -713,7 +610,6 @@ async def download_update(user: User = Depends(get_current_user)):
 
 @app.get("/api/update/progress")
 async def get_update_progress(user: User = Depends(get_current_user)):
-    """Get the current download progress."""
     return {
         "progress": updater.download_progress,
         "is_downloading": updater.is_downloading,
@@ -722,9 +618,7 @@ async def get_update_progress(user: User = Depends(get_current_user)):
 
 @app.post("/api/update/apply")
 async def apply_update(user: User = Depends(get_current_user)):
-    """Execute the installer and restart the application."""
     success = updater.apply_update()
     if not success:
         raise HTTPException(status_code=500, detail="Failed to launch update installer")
     return {"message": "Update started"}
-
