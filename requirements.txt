@@ -11,6 +11,4 @@ python-jose[cryptography]
 jinja2
 pywebview
 keyring
-python-magic
-python-magic-bin
 argon2-cffi

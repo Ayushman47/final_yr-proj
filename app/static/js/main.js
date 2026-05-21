@@ -904,6 +904,113 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+async function checkUpdate() {
+    try {
+        const res = await fetch("/api/update/check", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.available) {
+            const modal = document.getElementById("updateModal");
+            const versionText = document.getElementById("updateVersionText");
+            const releaseNotes = document.getElementById("updateReleaseNotes");
+            
+            if (versionText) {
+                versionText.innerText = `v${data.current_version} → v${data.latest_version}`;
+            }
+            if (releaseNotes) {
+                releaseNotes.innerText = data.release_notes || "No release notes provided.";
+            }
+            if (modal) {
+                modal.style.display = "flex";
+            }
+        }
+    } catch (e) {
+        console.error("Error checking for updates:", e);
+    }
+}
+
+async function startUpdate() {
+    try {
+        const res = await fetch("/api/update/download", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            if (typeof showToast === 'function') showToast(err.detail || "Failed to start update download.", "error");
+            return;
+        }
+        
+        const updateActions = document.getElementById("updateActions");
+        const updateProgressContainer = document.getElementById("updateProgressContainer");
+        if (updateActions) updateActions.style.display = "none";
+        if (updateProgressContainer) updateProgressContainer.style.display = "block";
+        
+        pollUpdateProgress();
+    } catch (e) {
+        console.error("Error downloading update:", e);
+        if (typeof showToast === 'function') showToast("Error contacting server.", "error");
+    }
+}
+
+let updatePollInterval = null;
+function pollUpdateProgress() {
+    if (updatePollInterval) clearInterval(updatePollInterval);
+    
+    updatePollInterval = setInterval(async () => {
+        try {
+            const res = await fetch("/api/update/progress", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            
+            const updatePercent = document.getElementById("updatePercent");
+            const updateBar = document.getElementById("updateBar");
+            const updateStatusText = document.getElementById("updateStatusText");
+            
+            if (data.status === "error") {
+                clearInterval(updatePollInterval);
+                if (updateStatusText) updateStatusText.innerText = "Download failed!";
+                if (updateStatusText) {
+                    updateStatusText.style.color = "red";
+                }
+                if (typeof showToast === 'function') showToast("Update download failed.", "error");
+                return;
+            }
+            
+            const progress = data.progress || 0;
+            if (updatePercent) updatePercent.innerText = progress + "%";
+            if (updateBar) updateBar.style.width = progress + "%";
+            
+            if (progress >= 100) {
+                clearInterval(updatePollInterval);
+                if (updateStatusText) updateStatusText.innerText = "Applying update...";
+                setTimeout(applyUpdate, 1500);
+            }
+        } catch (e) {
+            console.error("Error polling update progress:", e);
+        }
+    }, 1000);
+}
+
+async function applyUpdate() {
+    try {
+        const res = await fetch("/api/update/apply", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            if (typeof showToast === 'function') showToast(err.detail || "Failed to apply update.", "error");
+        }
+    } catch (e) {
+        console.error("Error applying update:", e);
+    }
+}
+
 // Bind to window object for inline HTML event access
 window.checkAdmin = checkAdmin;
 window.openAdminModal = openAdminModal;
@@ -919,6 +1026,9 @@ window.closePwdModal = closePwdModal;
 window.deleteDoc = deleteDoc;
 window.triggerUpload = triggerUpload;
 window.findDoctors = findDoctors;
+window.checkUpdate = checkUpdate;
+window.startUpdate = startUpdate;
+window.applyUpdate = applyUpdate;
 
 // Start App
 init();

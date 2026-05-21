@@ -39,10 +39,75 @@ app.add_middleware(
 async def startup_event():
     init_db()
     
+    # Generate default otc-il.pdf if it doesn't exist
+    static_dir = os.path.join(get_bundle_dir(), "app", "static")
+    os.makedirs(static_dir, exist_ok=True)
+    default_pdf_path = os.path.join(static_dir, "otc-il.pdf")
+    
+    if not os.path.exists(default_pdf_path):
+        try:
+            import fitz
+            doc = fitz.open()
+            page = doc.new_page()
+            
+            otc_text = """OTC Medication Reference Guide (otc-il.pdf)
+==============================================
+This document contains standard Over-The-Counter (OTC) medication reference guidelines for common health conditions.
+
+1. FEVER & PAIN RELIEF (Analgesics & Antipyretics)
+- Acetaminophen (Tylenol/Paracetamol): Used for mild to moderate pain relief and reducing fever. Typical adult dosage is 325mg to 650mg every 4 to 6 hours as needed. Do not exceed 3,000mg in 24 hours. High doses can cause severe liver damage.
+- Ibuprofen (Advil/Motrin): Non-steroidal anti-inflammatory drug (NSAID) used for pain, fever, and inflammation. Typical adult dosage is 200mg to 400mg every 4 to 6 hours. Do not exceed 1,200mg in 24 hours. Take with food to avoid stomach irritation.
+
+2. COUGH, COLD & DECONGESTANTS
+- Dextromethorphan: Cough suppressant used for temporary relief of dry, non-productive coughs. Typical dosage is 10mg to 20mg every 4 hours.
+- Guaifenesin (Mucinex): Expectorant used to help thin and loosen mucus in the chest. Typical dosage is 200mg to 400mg every 4 hours. Drink plenty of water.
+- Pseudoephedrine (Sudafed): Nasal decongestant. Reduces swelling in nasal passages. May cause alertness or insomnia.
+
+3. ALLERGIES & ANTIHISTAMINES
+- Cetirizine (Zyrtec): Second-generation antihistamine used for seasonal allergies, hives, and runny nose. Adult dosage is 10mg once daily. Non-drowsy for most people.
+- Diphenhydramine (Benadryl): First-generation antihistamine used for allergic reactions and sleep aid. Dosage is 25mg to 50mg every 6 hours. May cause significant drowsiness.
+
+4. DIGESTIVE AID
+- Loperamide (Imodium): Used to treat acute diarrhea. Initial dose is 4mg, followed by 2mg after each loose stool. Do not exceed 8mg per day for OTC use.
+- Famotidine (Pepcid): H2 blocker used to prevent and relieve heartburn or acid indigestion. Dosage is 10mg to 20mg once or twice daily.
+"""
+            page.insert_text((50, 50), otc_text, fontsize=10)
+            doc.save(default_pdf_path)
+            doc.close()
+            print("Generated default otc-il.pdf successfully.")
+        except Exception as e:
+            print(f"Error generating default PDF: {e}")
+
+    # Ingest default PDF if database is empty
+    from app.database import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as count FROM documents")
+    doc_count = cursor.fetchone()["count"]
+    if doc_count == 0 and os.path.exists(default_pdf_path):
+        try:
+            with open(default_pdf_path, "rb") as f:
+                pdf_bytes = f.read()
+            
+            # Find an admin user to assign as uploader
+            cursor.execute("SELECT id FROM users WHERE is_admin = 1 LIMIT 1")
+            admin = cursor.fetchone()
+            admin_id = admin["id"] if admin else 1
+            
+            from app.retrieval_service import ingest_pdf_pymupdf
+            chunk_count = ingest_pdf_pymupdf(pdf_bytes, "otc-il.pdf")
+            
+            cursor.execute("""
+                INSERT INTO documents (filename, uploaded_by, chunk_count)
+                VALUES (?, ?, ?)
+            """, ("otc-il.pdf", admin_id, chunk_count))
+            conn.commit()
+            print("Successfully ingested default otc-il.pdf on startup.")
+        except Exception as e:
+            print(f"Error ingesting default PDF on startup: {e}")
+            
     # Sync database documents with vector store on start
     from app.retrieval_service import collection
-    from app.database import get_connection
-    
     try:
         results = collection.get(include=["metadatas"])
         metas = results.get("metadatas", [])
@@ -52,8 +117,6 @@ async def startup_event():
                 sources.add(m["source"])
         
         if sources:
-            conn = get_connection()
-            cursor = conn.cursor()
             cursor.execute("SELECT id FROM users WHERE is_admin = 1 LIMIT 1")
             admin = cursor.fetchone()
             admin_id = admin["id"] if admin else 1
@@ -67,9 +130,10 @@ async def startup_event():
                         VALUES (?, ?, ?)
                     """, (src, admin_id, count))
             conn.commit()
-            conn.close()
     except Exception as e:
         print(f"Startup sync error: {e}")
+    finally:
+        conn.close()
 
 templates = Jinja2Templates(directory=os.path.join(get_bundle_dir(), "app", "templates"))
 
@@ -124,15 +188,9 @@ async def upload_pdf(
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large (max 10MB)")
 
-    # Strict MIME type check using magic bytes
-    import magic
-    try:
-        mime_type = magic.from_buffer(content, mime=True)
-        if mime_type != "application/pdf":
-            raise HTTPException(status_code=415, detail="Invalid file format. Only genuine PDF files are allowed.")
-    except Exception:
-        if not content.startswith(b"%PDF-"):
-            raise HTTPException(status_code=415, detail="Invalid PDF signature")
+    # Strict MIME type check using PDF header signature
+    if not content.startswith(b"%PDF-"):
+        raise HTTPException(status_code=415, detail="Invalid file format. Only genuine PDF files are allowed.")
 
     try:
         chunk_count = ingest_pdf(content, file.filename)
