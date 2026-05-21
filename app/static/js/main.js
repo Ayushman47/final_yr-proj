@@ -466,7 +466,10 @@ async function init() {
             hasActiveModel = !!mData.active;
             if (!hasActiveModel) {
                 const setupModal = document.getElementById("setupWizardModal");
-                if (setupModal) setupModal.style.display = "flex";
+                if (setupModal) {
+                    setupModal.style.display = "flex";
+                    loadSetupInfo();
+                }
             }
         }
 
@@ -485,6 +488,437 @@ async function init() {
     // Check for updates delayed
     setTimeout(() => { if (typeof checkUpdate === 'function') checkUpdate(); }, 5000);
 }
+
+// SETUP WIZARD LOGIC
+let selectedSetupTier = null;
+
+async function loadSetupInfo() {
+    try {
+        const res = await fetch("/api/setup-info", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const detectedRam = document.getElementById("detectedRam");
+            const recommendedTier = document.getElementById("recommendedTier");
+            
+            if (detectedRam) detectedRam.innerText = data.ram_gb + " GB";
+            if (recommendedTier) {
+                recommendedTier.innerText = data.recommended_tier;
+            }
+            
+            // Auto-select recommended tier
+            selectSetupTier(data.recommended_tier);
+        }
+    } catch (e) {
+        console.error("Failed to load setup info:", e);
+    }
+}
+
+function selectSetupTier(tier) {
+    selectedSetupTier = tier;
+    
+    const liteEl = document.getElementById("tierLite");
+    const balancedEl = document.getElementById("tierBalanced");
+    const highEl = document.getElementById("tierHigh");
+    
+    if (liteEl) {
+        liteEl.style.borderColor = "#e2e8f0";
+        liteEl.style.background = "white";
+    }
+    if (balancedEl) {
+        balancedEl.style.borderColor = "#e2e8f0";
+        balancedEl.style.background = "white";
+    }
+    if (highEl) {
+        highEl.style.borderColor = "#e2e8f0";
+        highEl.style.background = "white";
+    }
+    
+    let target = null;
+    if (tier === "Lite") target = liteEl;
+    else if (tier === "Balanced") target = balancedEl;
+    else if (tier === "High Accuracy") target = highEl;
+    
+    if (target) {
+        target.style.borderColor = "var(--primary-green)";
+        target.style.background = "rgba(46, 125, 50, 0.04)";
+    }
+}
+
+function finishSetup() {
+    if (!selectedSetupTier) {
+        alert("Please select an AI tier to continue.");
+        return;
+    }
+    
+    const setupModal = document.getElementById("setupWizardModal");
+    if (setupModal) setupModal.style.display = "none";
+    
+    openSettings();
+    
+    if (typeof selectSettingsTier === 'function') {
+        selectSettingsTier(selectedSetupTier);
+    }
+}
+
+window.selectSetupTier = selectSetupTier;
+window.finishSetup = finishSetup;
+
+// ── Admin Panel Functions ──
+async function checkAdmin() {
+    try {
+        const res = await fetch("/me", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.is_admin) {
+            const adminBtn = document.getElementById("adminPanelBtn");
+            if (adminBtn) adminBtn.style.display = "flex";
+        }
+        if (data.username) {
+            const el = document.getElementById("topUserName");
+            if (el) {
+                el.textContent = "Welcome, " + data.username;
+                el.style.display = "inline-block";
+            }
+        }
+    } catch (e) { console.error("Error checking admin status:", e); }
+}
+
+async function openAdminModal() {
+    const adminModal = document.getElementById("adminModal");
+    if (adminModal) adminModal.style.display = "flex";
+    switchAdminTab('docs');
+    loadAdminStats();
+}
+
+function closeAdminModal() {
+    const adminModal = document.getElementById("adminModal");
+    if (adminModal) adminModal.style.display = "none";
+}
+
+function switchAdminTab(tab) {
+    const isDocs = tab === 'docs';
+    const paneDocs = document.getElementById("paneDocs");
+    const paneUsers = document.getElementById("paneUsers");
+    const tabDocs = document.getElementById("tabDocs");
+    const tabUsers = document.getElementById("tabUsers");
+
+    if (paneDocs) paneDocs.style.display = isDocs ? 'block' : 'none';
+    if (paneUsers) paneUsers.style.display = isDocs ? 'none' : 'block';
+    
+    if (tabDocs) {
+        tabDocs.style.background = isDocs ? '#e8f5e9' : 'transparent';
+        tabDocs.style.color = isDocs ? 'var(--primary-green)' : '#64748b';
+    }
+    
+    if (tabUsers) {
+        tabUsers.style.background = !isDocs ? '#e8f5e9' : 'transparent';
+        tabUsers.style.color = !isDocs ? 'var(--primary-green)' : '#64748b';
+    }
+    
+    if (isDocs) loadDocumentList();
+    else loadUserList();
+}
+
+async function loadAdminStats() {
+    try {
+        const res = await fetch("/admin/stats", { headers: { "Authorization": "Bearer " + token }});
+        if (res.ok) {
+            const data = await res.json();
+            const statDocs = document.getElementById("statDocs");
+            const statChunks = document.getElementById("statChunks");
+            const statUsers = document.getElementById("statUsers");
+            const statSize = document.getElementById("statSize");
+            if (statDocs) statDocs.innerText = data.documents;
+            if (statChunks) statChunks.innerText = data.total_chunks;
+            if (statUsers) statUsers.innerText = data.users;
+            if (statSize) statSize.innerText = data.db_size_mb + "MB";
+        }
+    } catch (e) {}
+}
+
+let allDocs = [];
+async function loadDocumentList() {
+    const list = document.getElementById("docList");
+    if (!list) return;
+    list.innerHTML = "Loading...";
+    try {
+        const res = await fetch("/admin/documents", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            allDocs = data.documents || [];
+            renderDocs(allDocs);
+        } else {
+            list.innerHTML = "Failed to load documents.";
+        }
+    } catch (e) { list.innerHTML = "Error loading documents."; }
+}
+
+function renderDocs(docs) {
+    const list = document.getElementById("docList");
+    if (!list) return;
+    list.innerHTML = "";
+    if (docs.length === 0) {
+        list.innerHTML = "<p style='color: #666; font-size: 14px; text-align:center; padding: 20px;'>No documents found.</p>";
+        return;
+    }
+    docs.forEach(doc => {
+        const div = document.createElement("div");
+        div.style = "display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee;";
+        div.innerHTML = `
+            <div style="flex: 1; min-width: 0; padding-right: 15px;">
+                <div style="font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${doc.filename}</div>
+                <div style="font-size: 10.5px; color: #888;">Chunks: ${doc.chunk_count} • ${new Date(doc.created_at).toLocaleDateString()}</div>
+            </div>
+            <button onclick="deleteDoc(${doc.id})" style="background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 700; flex-shrink: 0;">Delete</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function filterDocs() {
+    const searchEl = document.getElementById("docSearch");
+    if (!searchEl) return;
+    const q = searchEl.value.toLowerCase();
+    const filtered = allDocs.filter(d => d.filename.toLowerCase().includes(q));
+    renderDocs(filtered);
+}
+
+async function loadUserList() {
+    const list = document.getElementById("userList");
+    if (!list) return;
+    list.innerHTML = "Loading...";
+    try {
+        const res = await fetch("/admin/users", { headers: { "Authorization": "Bearer " + token }});
+        if (res.ok) {
+            const data = await res.json();
+            list.innerHTML = "";
+            data.users.forEach(u => {
+                const div = document.createElement("div");
+                div.style = "display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee;";
+                div.innerHTML = `
+                    <div>
+                        <div style="font-weight: 600; font-size: 13.5px;">${u.username} ${u.is_admin ? '<span style="color:var(--primary-green); font-size:10px;">(Admin)</span>' : ''}</div>
+                        <div style="font-size: 10.5px; color: #888;">Joined: ${new Date(u.created_at).toLocaleDateString()}</div>
+                    </div>
+                    <button onclick="resetUserPwd(${u.id}, '${u.username}')" style="background: #f1f5f9; color: #64748b; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 700;">Reset Pwd</button>
+                `;
+                list.appendChild(div);
+            });
+        } else {
+            list.innerHTML = "Failed to load users.";
+        }
+    } catch (e) { list.innerHTML = "Error loading users."; }
+}
+
+let activeResetUserId = null;
+let activeResetUsername = "";
+
+function resetUserPwd(id, username) {
+    activeResetUserId = id;
+    activeResetUsername = username;
+    const titleEl = document.getElementById("pwdResetTitle");
+    const inputEl = document.getElementById("newPwdInput");
+    const modalEl = document.getElementById("pwdResetModal");
+    if (titleEl) titleEl.innerText = `Reset Password for ${username}`;
+    if (inputEl) inputEl.value = "";
+    if (modalEl) modalEl.style.display = "flex";
+}
+
+function closePwdModal() {
+    const modalEl = document.getElementById("pwdResetModal");
+    if (modalEl) modalEl.style.display = "none";
+}
+
+async function deleteDoc(id) {
+    if (typeof showConfirm === 'function') {
+        const confirmed = await showConfirm(
+            "Delete Document?",
+            "This will remove the PDF and its AI memory index permanently.",
+            "Delete"
+        );
+        if (!confirmed) return;
+    } else {
+        if (!confirm("Are you sure you want to delete this document?")) return;
+    }
+    try {
+        const res = await fetch(`/admin/documents/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+            loadDocumentList();
+            loadAdminStats();
+            if (typeof showToast === 'function') showToast("Document deleted successfully");
+        } else {
+            const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+            if (typeof showToast === 'function') showToast(err.detail || "Delete failed.", "error");
+        }
+    } catch (e) {
+        if (typeof showToast === 'function') showToast("Error deleting.", "error");
+    }
+}
+
+function triggerUpload() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf";
+    input.onchange = () => {
+        const file = input.files[0];
+        if (!file) return;
+
+        const statusDiv = document.getElementById("uploadStatus");
+        const bar = document.getElementById("uploadBar");
+        const percentText = document.getElementById("uploadPercent");
+        const nameText = document.getElementById("uploadFileName");
+        const hint = document.getElementById("ingestHint");
+
+        if (nameText) nameText.innerText = file.name;
+        if (statusDiv) statusDiv.style.display = "block";
+        if (bar) {
+            bar.style.width = "0%";
+            bar.style.background = "var(--primary-green)";
+        }
+        if (percentText) percentText.innerText = "0%";
+        if (hint) hint.innerText = "Uploading to server...";
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const xhr = new XMLHttpRequest();
+        
+        // Track Upload Progress
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                if (bar) bar.style.width = percent + "%";
+                if (percentText) percentText.innerText = percent + "%";
+                if (percent === 100 && hint) {
+                    hint.innerText = "Processing & Indexing for AI... (Almost there)";
+                    if (bar) bar.style.background = "#fbbf24"; // Amber during processing
+                }
+            }
+        };
+
+        xhr.onload = () => {
+            if (statusDiv) statusDiv.style.display = "none";
+            if (bar) bar.style.background = "var(--primary-green)";
+            if (xhr.status === 200) {
+                loadDocumentList();
+                loadAdminStats();
+                if (typeof showToast === 'function') showToast("Document uploaded and indexed!");
+            } else {
+                let msg = "Upload failed";
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    msg = res.detail || msg;
+                } catch(e) {}
+                if (typeof showToast === 'function') showToast(msg, "error");
+            }
+        };
+
+        xhr.onerror = () => {
+            if (statusDiv) statusDiv.style.display = "none";
+            if (typeof showToast === 'function') showToast("Network error during upload.", "error");
+        };
+
+        xhr.open("POST", "/admin/upload-pdf");
+        xhr.setRequestHeader("Authorization", "Bearer " + token);
+        xhr.send(formData);
+    };
+    input.click();
+}
+
+function findDoctors() {
+    if (!navigator.onLine) {
+        alert("Internet connection required to find nearby doctors.");
+        return;
+    }
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const query = encodeURIComponent("doctor hospital clinic");
+            const url = `https://www.google.com/maps/search/${query}/@${lat},${lon},14z`;
+            window.open(url, "_blank");
+            closeSidebar();
+        },
+        (error) => {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Location permission required to find nearby doctors.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                default:
+                    alert("An unknown error occurred while getting location.");
+                    break;
+            }
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+// Bind password confirm button
+document.addEventListener("DOMContentLoaded", () => {
+    const pwdConfirmBtn = document.getElementById("pwdConfirmBtn");
+    if (pwdConfirmBtn) {
+        pwdConfirmBtn.onclick = async () => {
+            const newPwdInput = document.getElementById("newPwdInput");
+            if (!newPwdInput) return;
+            const newPwd = newPwdInput.value.trim();
+            if (!newPwd) {
+                if (typeof showToast === 'function') showToast("Please enter a password", "error");
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/admin/users/${activeResetUserId}/reset-password`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+                    body: JSON.stringify({ new_password: newPwd })
+                });
+                if (res.ok) {
+                    if (typeof showToast === 'function') showToast(`Password for ${activeResetUsername} reset successfully!`);
+                    closePwdModal();
+                } else {
+                    if (typeof showToast === 'function') showToast("Failed to update password.", "error");
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') showToast("Error connecting to server.", "error");
+            }
+        };
+    }
+});
+
+// Bind to window object for inline HTML event access
+window.checkAdmin = checkAdmin;
+window.openAdminModal = openAdminModal;
+window.closeAdminModal = closeAdminModal;
+window.switchAdminTab = switchAdminTab;
+window.loadAdminStats = loadAdminStats;
+window.loadDocumentList = loadDocumentList;
+window.renderDocs = renderDocs;
+window.filterDocs = filterDocs;
+window.loadUserList = loadUserList;
+window.resetUserPwd = resetUserPwd;
+window.closePwdModal = closePwdModal;
+window.deleteDoc = deleteDoc;
+window.triggerUpload = triggerUpload;
+window.findDoctors = findDoctors;
 
 // Start App
 init();

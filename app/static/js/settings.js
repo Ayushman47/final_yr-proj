@@ -286,6 +286,29 @@ function startPollingProgress() {
     }, 1000);
 }
 
+async function cancelDownload() {
+    try {
+        const res = await fetch("/api/models/cancel", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+            if (modelPollInterval) clearInterval(modelPollInterval);
+            const container = document.getElementById("downloadProgressContainer");
+            if (container) container.style.display = "none";
+            if (typeof showToast === 'function') showToast("Download cancelled successfully.");
+            loadModels();
+        } else {
+            const data = await res.json();
+            if (typeof showToast === 'function') showToast(data.detail || "Could not cancel download", "error");
+        }
+    } catch(e) {
+        console.error("Error cancelling download:", e);
+    }
+}
+
+window.cancelDownload = cancelDownload;
+
 // 3. DOCUMENT LOGIC (Knowledge Base)
 async function loadDocumentList() {
     const list = document.getElementById("docListSettings") || document.getElementById("docList");

@@ -23,6 +23,11 @@ def get_bundle_dir():
         return sys._MEIPASS
     return os.path.dirname(os.path.abspath(__file__))
 
+def get_models_dir():
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(os.path.dirname(sys.executable), "models")
+    return os.path.join(get_bundle_dir(), "models")
+
 def wait_for_port(port, timeout_seconds=15):
     """Poll a local port until it begins accepting connections."""
     start_time = time.time()
@@ -37,10 +42,11 @@ def wait_for_port(port, timeout_seconds=15):
 def start_ollama():
     bundle_dir = get_bundle_dir()
     ollama_exe = os.path.join(bundle_dir, "ollama_bin", "ollama.exe")
-    models_dir = os.path.join(bundle_dir, "models")
+    models_dir = get_models_dir()
     
     if os.path.exists(ollama_exe):
         print("Starting local Ollama server...")
+        os.makedirs(models_dir, exist_ok=True)
         os.environ["OLLAMA_MODELS"] = models_dir
         subprocess.Popen(
             [ollama_exe, "serve"],
