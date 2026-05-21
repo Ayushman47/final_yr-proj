@@ -1011,6 +1011,40 @@ async function applyUpdate() {
     }
 }
 
+async function checkUpdateManual() {
+    if (typeof showToast === 'function') showToast("Checking for updates...");
+    try {
+        const res = await fetch("/api/update/check", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) {
+            if (typeof showToast === 'function') showToast("Could not reach update server.", "error");
+            return;
+        }
+        const data = await res.json();
+        if (data.available) {
+            const modal = document.getElementById("updateModal");
+            const versionText = document.getElementById("updateVersionText");
+            const releaseNotes = document.getElementById("updateReleaseNotes");
+            
+            if (versionText) {
+                versionText.innerText = `v${data.current_version} → v${data.latest_version}`;
+            }
+            if (releaseNotes) {
+                releaseNotes.innerText = data.release_notes || "No release notes provided.";
+            }
+            if (modal) {
+                modal.style.display = "flex";
+            }
+        } else {
+            if (typeof showToast === 'function') showToast("You are on the latest version! (v" + (data.current_version || "2.0.0") + ")");
+        }
+    } catch (e) {
+        console.error("Error checking for updates:", e);
+        if (typeof showToast === 'function') showToast("Error connecting to server.", "error");
+    }
+}
+
 // Bind to window object for inline HTML event access
 window.checkAdmin = checkAdmin;
 window.openAdminModal = openAdminModal;
@@ -1029,6 +1063,7 @@ window.findDoctors = findDoctors;
 window.checkUpdate = checkUpdate;
 window.startUpdate = startUpdate;
 window.applyUpdate = applyUpdate;
+window.checkUpdateManual = checkUpdateManual;
 
 // Start App
 init();
