@@ -10,11 +10,15 @@ import socket
 if not os.environ.get("SECRET_KEY"):
     os.environ["SECRET_KEY"] = "health-assist-default-secret-key-123"
 
-# Fix stdout/stderr for pyinstaller windowed mode
-if sys.stdout is None:
-    sys.stdout = open(os.devnull, "w")
-if sys.stderr is None:
-    sys.stderr = open(os.devnull, "w")
+# Fix stdout/stderr for pyinstaller windowed mode by logging to APPDATA
+app_data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "HealthAssist")
+os.makedirs(app_data_dir, exist_ok=True)
+log_file_path = os.path.join(app_data_dir, "debug.log")
+
+# Redirect stdout/stderr to log file so we can capture any runtime tracebacks
+log_file = open(log_file_path, "a", encoding="utf-8", buffering=1)
+sys.stdout = log_file
+sys.stderr = log_file
 
 import fitz
 import app.retrieval_service
@@ -29,9 +33,9 @@ def get_bundle_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 def get_models_dir():
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(os.path.dirname(sys.executable), "models")
-    return os.path.join(get_bundle_dir(), "models")
+    app_data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "HealthAssist")
+    os.makedirs(app_data_dir, exist_ok=True)
+    return os.path.join(app_data_dir, "models")
 
 def wait_for_port(port, timeout_seconds=15):
     """Poll a local port until it begins accepting connections."""

@@ -18,14 +18,14 @@ def get_ollama_exe():
     return "ollama"
 
 def get_config_path():
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(os.path.dirname(sys.executable), "model_config.json")
-    return os.path.join(get_bundle_dir(), "model_config.json")
+    app_data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "HealthAssist")
+    os.makedirs(app_data_dir, exist_ok=True)
+    return os.path.join(app_data_dir, "model_config.json")
 
 def get_models_dir():
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(os.path.dirname(sys.executable), "models")
-    return os.path.join(get_bundle_dir(), "models")
+    app_data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "HealthAssist")
+    os.makedirs(app_data_dir, exist_ok=True)
+    return os.path.join(app_data_dir, "models")
 
 def get_active_model():
     config_path = get_config_path()

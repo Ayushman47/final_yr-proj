@@ -39,10 +39,10 @@ app.add_middleware(
 async def startup_event():
     init_db()
     
-    # Generate default otc-il.pdf if it doesn't exist
-    static_dir = os.path.join(get_bundle_dir(), "app", "static")
-    os.makedirs(static_dir, exist_ok=True)
-    default_pdf_path = os.path.join(static_dir, "otc-il.pdf")
+    # Generate default otc-il.pdf if it doesn't exist in writable APPDATA
+    app_data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "HealthAssist")
+    os.makedirs(app_data_dir, exist_ok=True)
+    default_pdf_path = os.path.join(app_data_dir, "otc-il.pdf")
     
     if not os.path.exists(default_pdf_path):
         try:
