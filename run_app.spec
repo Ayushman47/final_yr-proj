@@ -6,7 +6,7 @@ from PyInstaller.utils.hooks import collect_all
 # allow users to download models through the app UI dynamically.
 datas = [('app/templates', 'app/templates'), ('app/static', 'app/static'), ('ollama_bin', 'ollama_bin')]
 binaries = []
-hiddenimports = ['passlib.handlers.pbkdf2', 'bcrypt', 'clr', 'sentence_transformers', 'keyring.backends.Windows']
+hiddenimports = ['passlib.handlers.pbkdf2', 'bcrypt', 'clr', 'sentence_transformers', 'keyring.backends.Windows', 'fitz']
 
 # Collect heavy libraries
 tmp_ret = collect_all('chromadb')

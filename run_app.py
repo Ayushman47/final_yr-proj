@@ -16,7 +16,12 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
 
-from app.main import app
+import fitz
+import app.retrieval_service
+import app.database
+import app.model_profile_service
+import app.updater
+from app.main import app as fastapi_app
 
 def get_bundle_dir():
     if hasattr(sys, '_MEIPASS'):
@@ -61,7 +66,7 @@ def start_ollama():
         wait_for_port(11434, 5)
 
 def start_server():
-    uvicorn.run(app, host="127.0.0.1", port=8001, use_colors=False, log_level="error")
+    uvicorn.run(fastapi_app, host="127.0.0.1", port=8001, use_colors=False, log_level="error")
 
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
